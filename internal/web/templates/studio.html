@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Life Dots</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/static/styles.css"/>
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <h1 class="brand">Life Dots</h1>
+      <p class="tagline">Your life in dots — on your phone or desktop.</p>
+    </div>
+    <div class="header-actions">
+      <button type="button" id="btnReset">Reset</button>
+      <button type="button" class="primary" id="btnSave">Copy wallpaper URL</button>
+    </div>
+  </header>
+
+  <main class="studio">
+    <section class="stack">
+      <div class="panel">
+        <h2>Calendar</h2>
+        <div class="seg">
+          <button type="button" data-seg="mode" data-value="life">Life</button>
+          <button type="button" data-seg="mode" data-value="year" class="active">Year</button>
+          <button type="button" data-seg="mode" data-value="year-months">Months</button>
+          <button type="button" data-seg="mode" data-value="quarters">Quarters</button>
+          <button type="button" data-seg="mode" data-value="monthly">Monthly</button>
+          <button type="button" data-seg="mode" data-value="weekly">Weekly</button>
+          <button type="button" data-seg="mode" data-value="custom">Goal</button>
+          <button type="button" data-seg="mode" data-value="habits">Habits</button>
+        </div>
+
+        <div data-mode-panel="life" hidden>
+          <div class="field"><label for="birthday">Birthday</label><input id="birthday" type="date" value="1995-01-01"/></div>
+          <div class="field"><label for="lifespan">Lifespan (years)</label><input id="lifespan" type="number" min="1" max="120" value="90"/></div>
+        </div>
+        <div data-mode-panel="year">
+          <p class="hint">All days in the current year.</p>
+        </div>
+        <div data-mode-panel="year-months" hidden>
+          <p class="hint">Twelve monthly calendars for the current year.</p>
+        </div>
+        <div data-mode-panel="quarters" hidden>
+          <p class="hint">Current quarter progress as a day grid.</p>
+        </div>
+        <div data-mode-panel="monthly" hidden>
+          <p class="hint">This month as a calendar grid.</p>
+        </div>
+        <div data-mode-panel="weekly" hidden>
+          <p class="hint">This week’s seven days.</p>
+        </div>
+        <div data-mode-panel="custom" hidden>
+          <div class="field"><label for="goalTitle">Goal title</label><input id="goalTitle" type="text" placeholder="New York City Marathon"/></div>
+          <div class="field"><label for="startDate">Start</label><input id="startDate" type="date"/></div>
+          <div class="field"><label for="endDate">End / deadline</label><input id="endDate" type="date"/></div>
+        </div>
+        <div data-mode-panel="habits" hidden>
+          <p class="hint">Track up to 4 habits. Log from iPhone Shortcuts via <code>/api/habits/log</code>.</p>
+          <button type="button" id="btnLogHabit">Log habit today</button>
+        </div>
+        <div class="field"><label for="customTitle">Title</label><input id="customTitle" type="text" placeholder="MY LIFE IN WEEKS"/></div>
+
+        <div data-mode-panel="life" hidden>
+          <h2 class="sub">Grouping</h2>
+          <div class="seg seg-tight">
+            <button type="button" data-seg="grouping" data-value="none">None</button>
+            <button type="button" data-seg="grouping" data-value="months">Months</button>
+            <button type="button" data-seg="grouping" data-value="decades">Decades</button>
+            <button type="button" data-seg="grouping" data-value="full" class="active">Full</button>
+            <button type="button" data-seg="grouping" data-value="weeks">Weeks</button>
+            <button type="button" data-seg="grouping" data-value="fortnight">Fortnight</button>
+          </div>
+        </div>
+        <div data-mode-panel="life,year-months,monthly,weekly,custom" hidden>
+          <h2 class="sub">Week starts</h2>
+          <div class="seg seg-tight">
+            <button type="button" data-seg="weekStart" data-value="monday" class="active">Monday</button>
+            <button type="button" data-seg="weekStart" data-value="sunday">Sunday</button>
+          </div>
+        </div>
+        <label class="check" data-mode-panel="life,year,year-months,monthly,weekly,habits"><input type="checkbox" id="showAxes"/> Show axis labels</label>
+        <label class="check"><input type="checkbox" id="showTitle" checked/> Show title</label>
+        <label class="check"><input type="checkbox" id="showFooter" checked/> Show footer</label>
+      </div>
+
+      <div class="panel setup">
+        <h2>Phone setup</h2>
+        <ol>
+          <li>Copy the wallpaper URL below, or scan the QR on your phone.</li>
+          <li>Shortcuts → Automation → Time of Day (e.g. 6:00 AM, Daily, Run Immediately).</li>
+          <li>Get Contents of URL → paste the wallpaper URL (or POST a Photos album image).</li>
+          <li>Set Wallpaper → Lock Screen → turn off Crop to Subject &amp; Show Preview.</li>
+        </ol>
+        <div class="url-box" id="wallpaperUrl">{{.Host}}/wallpaper.png</div>
+        <div class="actions-row">
+          <button type="button" id="btnCopy">Copy URL</button>
+          <button type="button" id="btnDesktop">Set desktop wallpaper</button>
+        </div>
+        <img class="qr" id="qrImg" alt="QR code" src="/api/qr"/>
+        <p class="setup-note">Also works as a Home Screen web app: <a href="/pwa">Open PWA</a></p>
+      </div>
+    </section>
+
+    <section class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <img id="preview" alt="Wallpaper preview" src="/wallpaper.png"/>
+          <div class="island"></div>
+          <div class="lock-chrome">
+            <div class="lock-date" id="lockDate">Wed Oct 14</div>
+            <div class="lock-time">9:41</div>
+            <div class="lock-actions"><span></span><span></span></div>
+          </div>
+          <div class="loupe" id="loupe"><img id="loupeImg" alt=""/></div>
+        </div>
+      </div>
+      <div class="seg seg-screen">
+        <button type="button" data-seg="screen" data-value="lock" class="active">Lock Screen</button>
+        <button type="button" data-seg="screen" data-value="home">Home Screen</button>
+      </div>
+    </section>
+
+    <section class="stack">
+      <div class="panel">
+        <h2>Device</h2>
+        <div class="field">
+          <select id="device" aria-label="Device">
+            {{range .Devices}}
+            <option value="{{.ID}}" data-w="{{.Width}}" data-h="{{.Height}}" {{if eq .ID "iphone-16-pro"}}selected{{end}}>{{.Group}} — {{.Name}} ({{.Width}}×{{.Height}})</option>
+            {{end}}
+          </select>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Foreground</h2>
+        <div class="color-row">
+          <div class="field"><label for="fg">Color</label><input id="fg" type="color" value="#ffffff"/></div>
+          <div class="field"><label for="highlightColor">Today</label><input id="highlightColor" type="color" value="#ff6b4a"/></div>
+        </div>
+        <div class="seg">
+          <button type="button" data-seg="shape" data-value="circle" class="active">Circle</button>
+          <button type="button" data-seg="shape" data-value="rounded">Rounded</button>
+          <button type="button" data-seg="shape" data-value="square">Square</button>
+          <button type="button" data-seg="shape" data-value="square-nogap">Square (no gap)</button>
+        </div>
+        <div class="field"><label for="marginTop">Top margin (px)</label><input id="marginTop" type="number" min="0" max="800" value="48"/></div>
+        <div class="field"><label for="margin">Side margin (px)</label><input id="margin" type="number" min="0" max="400" value="48"/></div>
+        <div class="field"><label for="shapeScale">Shape scale <span data-val="shapeScale">100</span>%</label><input id="shapeScale" type="range" min="50" max="150" value="100"/></div>
+        <div class="field"><label for="gridOpacity">Grid opacity <span data-val="gridOpacity">100</span>%</label><input id="gridOpacity" type="range" min="0" max="100" value="100"/></div>
+        <div class="seg seg-tight">
+          <button type="button" data-seg="fillFocus" data-value="past" class="active">Highlight Past</button>
+          <button type="button" data-seg="fillFocus" data-value="future">Highlight Future</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Background</h2>
+        <div class="seg">
+          <button type="button" data-seg="bgType" data-value="match" class="active">Match</button>
+          <button type="button" data-seg="bgType" data-value="solid">Color</button>
+          <button type="button" data-seg="bgType" data-value="url">Photo URL</button>
+        </div>
+        <div class="field" id="bgColorField" hidden><label for="bg">Color</label><input id="bg" type="color" value="#000000"/></div>
+        <div id="bgUrlFields" hidden>
+          <div class="field"><label for="bgUrl">Photo URL</label><input id="bgUrl" type="url" placeholder="https://…"/></div>
+          <div class="field"><label for="bgBlur">Blur <span data-val="bgBlur">0</span>px</label><input id="bgBlur" type="range" min="0" max="20" value="0"/></div>
+          <div class="field"><label for="bgDim">Dim <span data-val="bgDim">30</span>%</label><input id="bgDim" type="range" min="0" max="80" value="30"/></div>
+          <div class="field"><label for="bgFocalX">Focal X <span data-val="bgFocalX">50</span>%</label><input id="bgFocalX" type="range" min="0" max="100" value="50"/></div>
+          <div class="field"><label for="bgFocalY">Focal Y <span data-val="bgFocalY">50</span>%</label><input id="bgFocalY" type="range" min="0" max="100" value="50"/></div>
+        </div>
+        <label class="check"><input type="checkbox" id="showCard"/> Card behind dots</label>
+        <div id="cardFields">
+          <div class="field" style="margin-top:0.75rem"><label for="cardOpacity">Card opacity <span data-val="cardOpacity">35</span>%</label><input id="cardOpacity" type="range" min="0" max="100" value="35"/></div>
+          <div class="field"><label for="cardRadius">Radius <span data-val="cardRadius">28</span></label><input id="cardRadius" type="range" min="0" max="50" value="28"/></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+  <script src="/static/studio.js"></script>
+</body>
+</html>

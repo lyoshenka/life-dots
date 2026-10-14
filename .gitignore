@@ -1,0 +1,4 @@
+/life-dots
+*.png
+.DS_Store
+.data/

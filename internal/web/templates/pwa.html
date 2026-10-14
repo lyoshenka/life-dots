@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="theme-color" content="#000000"/>
+  <title>Life Dots</title>
+  <link rel="stylesheet" href="/static/styles.css"/>
+</head>
+<body class="pwa-body">
+  <h1 class="brand" style="font-size:1.6rem;margin:0.5rem 0 1rem">Life Dots</h1>
+  <img id="wp" src="/wallpaper.png" alt="Your life in dots"/>
+  <div class="pwa-actions">
+    <button type="button" class="primary" id="refresh">Refresh</button>
+    <button type="button" id="log">Log habit</button>
+    <a href="/"><button type="button">Studio</button></a>
+  </div>
+  <script>
+    const img = document.getElementById('wp');
+    document.getElementById('refresh').onclick = () => { img.src = '/wallpaper.png?_=' + Date.now(); };
+    document.getElementById('log').onclick = async () => {
+      await fetch('/api/habits/log?habit=h1&done=1', { method: 'POST' });
+      img.src = '/wallpaper.png?mode=habits&_=' + Date.now();
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,591 @@
+(() => {
+  const state = {
+    mode: "year",
+    birthday: "1995-01-01",
+    lifespan: 90,
+    year: new Date().getFullYear(),
+    startDate: new Date().toISOString().slice(0, 10),
+    endDate: new Date(Date.now() + 90 * 864e5).toISOString().slice(0, 10),
+    goalTitle: "",
+    customTitle: "",
+    fg: "#ffffff",
+    bg: "#000000",
+    grouping: "full",
+    weekStart: "monday",
+    dotShape: "circle",
+    shapeStyle: "filled",
+    fillFocus: "past",
+    highlightToday: true,
+    highlightColor: "#ff6b4a",
+    showNumbers: false,
+    showBoth: false,
+    bgType: "match",
+    bgUrl: "",
+    bgBlur: 0,
+    bgDim: 30,
+    bgFocalX: 50,
+    bgFocalY: 50,
+    gridOpacity: 100,
+    showCard: false,
+    cardStyle: "flat",
+    cardOpacity: 35,
+    cardRadius: 28,
+    cardPadH: 28,
+    cardPadV: 36,
+    showAxes: false,
+    showTitle: true,
+    showLabels: false,
+    showBranding: false,
+    showProgress: true,
+    footerMode: "numbers",
+    deviceId: "iphone-16-pro",
+    width: 1206,
+    height: 2622,
+    screen: "lock",
+    widgetLayout: "none",
+    margin: 48,
+    marginTop: 48,
+    shapeScale: 100,
+    statsScale: 100,
+    habits: [
+      { id: "h1", name: "Move", icon: "dumbbell", completions: {} },
+      { id: "h2", name: "Read", icon: "book-open", completions: {} },
+    ],
+  };
+
+  const STORAGE_KEY = "life-dots-config";
+  const defaults = structuredClone(state);
+
+  const $ = (sel) => document.querySelector(sel);
+  const preview = $("#preview");
+  const loupe = $("#loupe");
+  const loupeImg = $("#loupeImg");
+  const urlBox = $("#wallpaperUrl");
+  const qrImg = $("#qrImg");
+  const toast = $("#toast");
+
+  function saveToLocalStorage() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toConfig(state)));
+    } catch {
+      /* quota / private mode */
+    }
+  }
+
+  function loadFromLocalStorage() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  function shapeForAPI(shape) {
+    return shape === "square-nogap" ? "square" : shape;
+  }
+
+  function noGapForAPI(shape) {
+    return shape === "square-nogap";
+  }
+
+  function toConfig(cfg) {
+    return {
+      mode: cfg.mode,
+      birthday: cfg.birthday,
+      lifespan: cfg.lifespan,
+      year: new Date().getFullYear(),
+      startDate: cfg.startDate,
+      endDate: cfg.endDate,
+      goalTitle: cfg.goalTitle,
+      customTitle: cfg.customTitle,
+      fg: cfg.fg,
+      bg: cfg.bg,
+      highlightColor: cfg.highlightColor,
+      grouping: cfg.grouping,
+      weekStart: cfg.weekStart,
+      dotShape: shapeForAPI(cfg.dotShape),
+      shapeStyle: cfg.shapeStyle,
+      noGap: noGapForAPI(cfg.dotShape),
+      fillFocus: cfg.fillFocus || "past",
+      highlightToday: cfg.highlightToday,
+      showNumbers: cfg.showNumbers,
+      showBoth: cfg.showBoth,
+      bgType: cfg.bgType,
+      bgUrl: cfg.bgUrl,
+      bgBlur: cfg.bgBlur,
+      bgDim: cfg.bgDim,
+      bgFocalX: cfg.bgFocalX,
+      bgFocalY: cfg.bgFocalY,
+      gridOpacity: cfg.gridOpacity,
+      showCard: cfg.showCard,
+      cardStyle: "flat",
+      cardOpacity: cfg.cardOpacity,
+      cardRadius: cfg.cardRadius,
+      cardPadH: cfg.cardPadH,
+      cardPadV: cfg.cardPadV,
+      showAxes: cfg.showAxes,
+      showTitle: cfg.showTitle,
+      showLabels: cfg.showLabels,
+      showBranding: cfg.showBranding,
+      showProgress: cfg.showProgress,
+      footerMode: cfg.footerMode,
+      deviceId: cfg.deviceId,
+      width: cfg.width,
+      height: cfg.height,
+      screen: cfg.screen,
+      widgetLayout: cfg.widgetLayout,
+      margin: cfg.margin,
+      marginTop: cfg.marginTop,
+      shapeScale: cfg.shapeScale,
+      statsScale: cfg.statsScale,
+      habits: cfg.habits,
+    };
+  }
+
+  function applyLoaded(cfg) {
+    if (!cfg || typeof cfg !== "object") return;
+    const map = {
+      mode: "mode",
+      birthday: "birthday",
+      lifespan: "lifespan",
+      year: "year",
+      startDate: "startDate",
+      endDate: "endDate",
+      goalTitle: "goalTitle",
+      customTitle: "customTitle",
+      fg: "fg",
+      bg: "bg",
+      highlightColor: "highlightColor",
+      grouping: "grouping",
+      weekStart: "weekStart",
+      dotShape: "dotShape",
+      shapeStyle: "shapeStyle",
+      fillFocus: "fillFocus",
+      highlightToday: "highlightToday",
+      bgType: "bgType",
+      bgUrl: "bgUrl",
+      bgBlur: "bgBlur",
+      bgDim: "bgDim",
+      bgFocalX: "bgFocalX",
+      bgFocalY: "bgFocalY",
+      gridOpacity: "gridOpacity",
+      showCard: "showCard",
+      cardStyle: "cardStyle",
+      cardOpacity: "cardOpacity",
+      cardRadius: "cardRadius",
+      showAxes: "showAxes",
+      showTitle: "showTitle",
+      showLabels: "showLabels",
+      showBranding: "showBranding",
+      showProgress: "showProgress",
+      footerMode: "footerMode",
+      deviceId: "deviceId",
+      width: "width",
+      height: "height",
+      screen: "screen",
+      widgetLayout: "widgetLayout",
+      margin: "margin",
+      marginTop: "marginTop",
+      shapeScale: "shapeScale",
+      habits: "habits",
+    };
+    for (const [from, to] of Object.entries(map)) {
+      if (cfg[from] !== undefined && cfg[from] !== null && cfg[from] !== "") {
+        state[to] = from === "habits" ? structuredClone(cfg[from]) : cfg[from];
+      }
+    }
+    if (cfg.noGap && (cfg.dotShape === "square" || !cfg.dotShape)) {
+      state.dotShape = "square-nogap";
+    }
+  }
+
+  function normalizeLoadedState() {
+    if (state.mode === "revenue" || state.mode === "next-months" || state.mode === "year-end") state.mode = "year";
+    if (state.footerMode === "quote" || state.footerMode === "both") state.footerMode = "numbers";
+    if (state.dotShape === "custom" || state.dotShape === "pill") state.dotShape = "circle";
+    if (state.bgType === "preset") state.bgType = "match";
+    if (state.cardStyle === "glass") state.cardStyle = "flat";
+    if (state.fillFocus !== "past" && state.fillFocus !== "future") state.fillFocus = "past";
+  }
+
+  function loadSavedConfig() {
+    // Studio settings live in localStorage only — never rewrite the page URL.
+    const saved = loadFromLocalStorage();
+    if (saved) applyLoaded(saved);
+    normalizeLoadedState();
+  }
+
+  function syncForm() {
+    const set = (id, val) => {
+      const el = document.getElementById(id);
+      if (!el || val === undefined || val === null) return;
+      if (el.type === "checkbox") el.checked = !!val;
+      else el.value = val;
+    };
+    set("fg", state.fg);
+    set("highlightColor", state.highlightColor);
+    set("bg", state.bg);
+    set("birthday", state.birthday);
+    set("lifespan", state.lifespan);
+    set("startDate", state.startDate);
+    set("endDate", state.endDate);
+    set("goalTitle", state.goalTitle);
+    set("customTitle", state.customTitle);
+    set("bgUrl", state.bgUrl);
+    set("bgBlur", state.bgBlur);
+    set("bgDim", state.bgDim);
+    set("bgFocalX", state.bgFocalX);
+    set("bgFocalY", state.bgFocalY);
+    set("gridOpacity", state.gridOpacity);
+    set("cardOpacity", state.cardOpacity);
+    set("cardRadius", state.cardRadius);
+    set("margin", state.margin);
+    set("marginTop", state.marginTop);
+    set("shapeScale", state.shapeScale);
+    set("showFooter", state.footerMode !== "none");
+    set("showCard", state.showCard);
+    set("showAxes", state.showAxes);
+    set("showTitle", state.showTitle);
+    const device = $("#device");
+    if (device && state.deviceId) device.value = state.deviceId;
+    document.querySelectorAll("[data-seg]").forEach((btn) => {
+      const key = btn.dataset.seg;
+      const map = {
+        mode: "mode",
+        screen: "screen",
+        shape: "dotShape",
+        grouping: "grouping",
+        weekStart: "weekStart",
+        bgType: "bgType",
+        fillFocus: "fillFocus",
+      };
+      const stateKey = map[key];
+      if (!stateKey) return;
+      btn.classList.toggle("active", btn.dataset.value === String(state[stateKey]));
+    });
+  }
+
+  function boolParam(v) {
+    return v ? "1" : "0";
+  }
+
+  function flatQuery(cfg) {
+    const p = new URLSearchParams();
+    const set = (k, v) => {
+      if (v === undefined || v === null || v === "") return;
+      p.set(k, String(v));
+    };
+    const mode = cfg.mode || "year";
+    set("mode", mode);
+
+    // Calendar inputs that matter for the selected mode only.
+    switch (mode) {
+      case "life":
+        set("birthday", cfg.birthday);
+        set("lifespan", cfg.lifespan);
+        set("grouping", cfg.grouping);
+        set("week_start", cfg.weekStart);
+        break;
+      case "year":
+        set("year", cfg.year || new Date().getFullYear());
+        break;
+      case "year-months":
+        set("year", cfg.year || new Date().getFullYear());
+        set("week_start", cfg.weekStart);
+        break;
+      case "quarters":
+        set("year", cfg.year || new Date().getFullYear());
+        break;
+      case "monthly":
+      case "weekly":
+        set("week_start", cfg.weekStart);
+        break;
+      case "custom":
+      case "goal":
+        set("start_date", cfg.startDate);
+        set("end_date", cfg.endDate);
+        set("goal", cfg.goalTitle);
+        set("week_start", cfg.weekStart);
+        break;
+      case "habits":
+        if (cfg.habits && cfg.habits.length) {
+          set("habits", JSON.stringify(cfg.habits));
+        }
+        break;
+      default:
+        break;
+    }
+
+    set("title", cfg.customTitle);
+    p.set("show_title", boolParam(cfg.showTitle));
+    set("footer_mode", cfg.footerMode);
+
+    if (["life", "year", "year-months", "monthly", "weekly", "habits"].includes(mode)) {
+      p.set("show_axes", boolParam(cfg.showAxes));
+    }
+
+    set("fg", cfg.fg);
+    set("highlight_color", cfg.highlightColor);
+    set("fill_focus", cfg.fillFocus || "past");
+    set("shape", shapeForAPI(cfg.dotShape));
+    if (noGapForAPI(cfg.dotShape)) p.set("no_gap", "1");
+    p.set("highlight_today", boolParam(cfg.highlightToday));
+
+    set("bg_type", cfg.bgType || "match");
+    if (cfg.bgType === "solid") {
+      set("bg", cfg.bg);
+    } else if (cfg.bgType === "url") {
+      set("bg_url", cfg.bgUrl);
+      set("bg_blur", cfg.bgBlur);
+      set("bg_dim", cfg.bgDim);
+      set("bg_focal_x", cfg.bgFocalX);
+      set("bg_focal_y", cfg.bgFocalY);
+    }
+
+    set("grid_opacity", cfg.gridOpacity);
+    p.set("show_card", boolParam(cfg.showCard));
+    if (cfg.showCard) {
+      set("card_opacity", cfg.cardOpacity);
+      set("card_radius", cfg.cardRadius);
+    }
+
+    set("device", cfg.deviceId);
+    set("width", cfg.width);
+    set("height", cfg.height);
+    set("screen", cfg.screen);
+    set("margin", cfg.margin);
+    set("margin_top", cfg.marginTop);
+    set("shape_scale", cfg.shapeScale);
+    return p;
+  }
+
+  function studioQuery() {
+    return flatQuery(state).toString();
+  }
+
+  function wallpaperURL(opts = {}) {
+    let cfg = state;
+    if (opts.preview) {
+      const maxEdge = 640;
+      const scale = Math.min(1, maxEdge / Math.max(state.width, state.height));
+      cfg = {
+        ...state,
+        width: Math.max(120, Math.round(state.width * scale)),
+        height: Math.max(240, Math.round(state.height * scale)),
+      };
+    }
+    return `/wallpaper.png?${flatQuery(cfg)}`;
+  }
+
+  function refreshPreview() {
+    saveToLocalStorage();
+    const u = wallpaperURL({ preview: true }) + "&_=" + Date.now();
+    preview.src = u;
+    loupeImg.src = u;
+    const abs = location.origin + wallpaperURL();
+    urlBox.textContent = abs;
+    qrImg.src = "/api/qr?url=" + encodeURIComponent(abs);
+    updateModePanels();
+  }
+
+  function updateModePanels() {
+    document.querySelectorAll("[data-mode-panel]").forEach((el) => {
+      const modes = el.getAttribute("data-mode-panel").split(",").map((m) => m.trim());
+      el.hidden = !modes.includes(state.mode);
+    });
+    const bgUrlFields = document.getElementById("bgUrlFields");
+    if (bgUrlFields) bgUrlFields.hidden = state.bgType !== "url";
+    const bgColorField = document.getElementById("bgColorField");
+    if (bgColorField) bgColorField.hidden = state.bgType !== "solid";
+    const cardFields = document.getElementById("cardFields");
+    if (cardFields) cardFields.hidden = !state.showCard;
+  }
+
+  const lockDate = document.getElementById("lockDate");
+  if (lockDate) {
+    lockDate.textContent = new Date().toLocaleDateString(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+  }
+
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 1800);
+  }
+
+  function bindSeg(name, key) {
+    document.querySelectorAll(`[data-seg="${name}"]`).forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(`[data-seg="${name}"]`).forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        state[key] = btn.dataset.value;
+        refreshPreview();
+      });
+    });
+  }
+
+  bindSeg("mode", "mode");
+  bindSeg("screen", "screen");
+  bindSeg("shape", "dotShape");
+  bindSeg("grouping", "grouping");
+  bindSeg("weekStart", "weekStart");
+  bindSeg("bgType", "bgType");
+  bindSeg("fillFocus", "fillFocus");
+
+  const fields = [
+    ["birthday", "birthday"],
+    ["lifespan", "lifespan", Number],
+    ["startDate", "startDate"],
+    ["endDate", "endDate"],
+    ["goalTitle", "goalTitle"],
+    ["customTitle", "customTitle"],
+    ["bgUrl", "bgUrl"],
+    ["bgBlur", "bgBlur", Number],
+    ["bgDim", "bgDim", Number],
+    ["bgFocalX", "bgFocalX", Number],
+    ["bgFocalY", "bgFocalY", Number],
+    ["gridOpacity", "gridOpacity", Number],
+    ["cardOpacity", "cardOpacity", Number],
+    ["cardRadius", "cardRadius", Number],
+    ["margin", "margin", Number],
+    ["marginTop", "marginTop", Number],
+    ["shapeScale", "shapeScale", Number],
+    ["fg", "fg"],
+    ["bg", "bg"],
+    ["highlightColor", "highlightColor"],
+  ];
+  fields.forEach(([id, key, cast]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("change", () => {
+      state[key] = cast ? cast(el.value) : el.value;
+      refreshPreview();
+    });
+    el.addEventListener("input", () => {
+      if (el.type === "range" || el.type === "number" || el.type === "color") {
+        state[key] = cast ? cast(el.value) : el.value;
+        const out = document.querySelector(`[data-val="${id}"]`);
+        if (out) out.textContent = el.value;
+        refreshPreview();
+      }
+    });
+  });
+
+  $("#device")?.addEventListener("change", (e) => {
+    const opt = e.target.selectedOptions[0];
+    state.deviceId = e.target.value;
+    state.width = Number(opt.dataset.w);
+    state.height = Number(opt.dataset.h);
+    refreshPreview();
+  });
+
+  $("#showCard")?.addEventListener("change", (e) => {
+    state.showCard = e.target.checked;
+    refreshPreview();
+  });
+  $("#showAxes")?.addEventListener("change", (e) => {
+    state.showAxes = e.target.checked;
+    state.showLabels = e.target.checked;
+    refreshPreview();
+  });
+  $("#showTitle")?.addEventListener("change", (e) => {
+    state.showTitle = e.target.checked;
+    refreshPreview();
+  });
+  $("#showFooter")?.addEventListener("change", (e) => {
+    state.footerMode = e.target.checked ? "numbers" : "none";
+    refreshPreview();
+  });
+  $("#btnSave")?.addEventListener("click", async () => {
+    const btn = $("#btnSave");
+    const label = btn?.dataset.label || btn?.textContent || "Copy wallpaper URL";
+    if (btn && !btn.dataset.label) btn.dataset.label = label;
+    const abs = location.origin + wallpaperURL();
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(abs);
+      ok = true;
+    } catch {
+      /* clipboard unavailable */
+    }
+    if (!btn) return;
+    btn.textContent = ok ? "Copied!" : "Copy failed";
+    btn.classList.add("copied");
+    clearTimeout(btn._copyTimer);
+    btn._copyTimer = setTimeout(() => {
+      btn.textContent = btn.dataset.label;
+      btn.classList.remove("copied");
+    }, 1600);
+  });
+
+  $("#btnCopy")?.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(urlBox.textContent);
+    showToast("URL copied");
+  });
+
+  $("#btnDesktop")?.addEventListener("click", async () => {
+    const res = await fetch("/api/desktop/apply?" + studioQuery(), { method: "POST" });
+    if (res.ok) showToast("Desktop wallpaper set");
+    else showToast("Desktop apply failed");
+  });
+
+  $("#btnReset")?.addEventListener("click", () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+    const next = structuredClone(defaults);
+    next.habits = (next.habits || []).map((h) => ({
+      ...h,
+      completions: {},
+    }));
+    Object.assign(state, next);
+    syncForm();
+    refreshPreview();
+    showToast("Reset to defaults");
+  });
+
+  const screen = $(".phone-screen");
+  screen?.addEventListener("mousemove", (e) => {
+    const rect = screen.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    loupe.style.display = "block";
+    loupe.style.left = x - 45 + "px";
+    loupe.style.top = y - 45 + "px";
+    loupeImg.style.width = rect.width * 2 + "px";
+    loupeImg.style.height = rect.height * 2 + "px";
+    loupeImg.style.left = -x * 2 + 45 + "px";
+    loupeImg.style.top = -y * 2 + 45 + "px";
+  });
+  screen?.addEventListener("mouseleave", () => {
+    loupe.style.display = "none";
+  });
+
+  $("#btnLogHabit")?.addEventListener("click", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const res = await fetch("/api/habits/log?habit=h1&done=1&" + studioQuery(), { method: "POST" });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.config) applyLoaded(data.config);
+      else if (state.habits[0]) {
+        if (!state.habits[0].completions) state.habits[0].completions = {};
+        state.habits[0].completions[today] = true;
+      }
+      showToast("Habit logged");
+      refreshPreview();
+    } else {
+      showToast("Habit log failed");
+    }
+  });
+
+  loadSavedConfig();
+  syncForm();
+  refreshPreview();
+})();
