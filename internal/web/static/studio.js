@@ -8,6 +8,7 @@
     endDate: new Date(Date.now() + 90 * 864e5).toISOString().slice(0, 10),
     customTitle: "",
     fg: "#ffffff",
+    fgOther: "#383838",
     bg: "#000000",
     grouping: "full",
     weekStart: "monday",
@@ -16,6 +17,8 @@
     fillFocus: "past",
     highlightToday: true,
     highlightColor: "#ff6b4a",
+    dotGap: 12,
+    dotSize: 26,
     showNumbers: false,
     showBoth: false,
     bgType: "match",
@@ -30,8 +33,8 @@
     cardStyle: "flat",
     cardOpacity: 35,
     cardRadius: 28,
-    cardPadH: 28,
-    cardPadV: 36,
+    cardPad: 28,
+    cardFade: 0,
     showAxes: false,
     showTitle: true,
     showLabels: false,
@@ -39,13 +42,14 @@
     showProgress: true,
     muteText: false,
     footerMode: "numbers",
+    titleSize: 84,
+    footerSize: 48,
     deviceId: "iphone-16-pro",
     width: 1206,
     height: 2622,
     widgetLayout: "none",
     margin: 48,
     marginTop: 48,
-    shapeScale: 100,
     statsScale: 100,
     habits: [
       { id: "h1", name: "Move", icon: "dumbbell", completions: {} },
@@ -100,6 +104,7 @@
       endDate: cfg.endDate,
       customTitle: cfg.customTitle,
       fg: cfg.fg,
+      fgOther: cfg.fgOther,
       bg: cfg.bg,
       highlightColor: cfg.highlightColor,
       grouping: cfg.grouping,
@@ -107,6 +112,8 @@
       dotShape: shapeForAPI(cfg.dotShape),
       shapeStyle: cfg.shapeStyle,
       noGap: noGapForAPI(cfg.dotShape),
+      dotGap: cfg.dotGap,
+      dotSize: cfg.dotSize,
       fillFocus: cfg.fillFocus || "past",
       highlightToday: cfg.highlightToday,
       showNumbers: cfg.showNumbers,
@@ -123,8 +130,9 @@
       cardStyle: "flat",
       cardOpacity: cfg.cardOpacity,
       cardRadius: cfg.cardRadius,
-      cardPadH: cfg.cardPadH,
-      cardPadV: cfg.cardPadV,
+      cardPadH: cfg.cardPad,
+      cardPadV: cfg.cardPad,
+      cardFade: cfg.cardFade,
       showAxes: cfg.showAxes,
       showTitle: cfg.showTitle,
       showLabels: cfg.showLabels,
@@ -132,13 +140,14 @@
       showProgress: cfg.showProgress,
       muteText: !!cfg.muteText,
       footerMode: cfg.footerMode,
+      titleSize: cfg.titleSize,
+      footerSize: cfg.footerSize,
       deviceId: cfg.deviceId,
       width: cfg.width,
       height: cfg.height,
       widgetLayout: cfg.widgetLayout,
       margin: cfg.margin,
       marginTop: cfg.marginTop,
-      shapeScale: cfg.shapeScale,
       statsScale: cfg.statsScale,
       habits: cfg.habits,
     };
@@ -155,6 +164,7 @@
       endDate: "endDate",
       customTitle: "customTitle",
       fg: "fg",
+      fgOther: "fgOther",
       bg: "bg",
       highlightColor: "highlightColor",
       grouping: "grouping",
@@ -175,6 +185,8 @@
       cardStyle: "cardStyle",
       cardOpacity: "cardOpacity",
       cardRadius: "cardRadius",
+      cardPad: "cardPad",
+      cardFade: "cardFade",
       showAxes: "showAxes",
       showTitle: "showTitle",
       showLabels: "showLabels",
@@ -182,13 +194,16 @@
       showProgress: "showProgress",
       muteText: "muteText",
       footerMode: "footerMode",
+      titleSize: "titleSize",
+      footerSize: "footerSize",
       deviceId: "deviceId",
       width: "width",
       height: "height",
       widgetLayout: "widgetLayout",
       margin: "margin",
       marginTop: "marginTop",
-      shapeScale: "shapeScale",
+      dotGap: "dotGap",
+      dotSize: "dotSize",
       habits: "habits",
     };
     for (const [from, to] of Object.entries(map)) {
@@ -198,6 +213,10 @@
     }
     if (cfg.noGap && (cfg.dotShape === "square" || !cfg.dotShape)) {
       state.dotShape = "square-nogap";
+    }
+    if (cfg.cardPad == null || cfg.cardPad === "") {
+      if (cfg.cardPadH != null && cfg.cardPadH !== "") state.cardPad = Number(cfg.cardPadH);
+      else if (cfg.cardPadV != null && cfg.cardPadV !== "") state.cardPad = Number(cfg.cardPadV);
     }
   }
 
@@ -227,6 +246,7 @@
       else el.value = val;
     };
     set("fg", state.fg);
+    set("fgOther", state.fgOther);
     set("highlightColor", state.highlightColor);
     set("bg", state.bg);
     set("birthday", state.birthday);
@@ -242,17 +262,30 @@
     set("gridOpacity", state.gridOpacity);
     set("cardOpacity", state.cardOpacity);
     set("cardRadius", state.cardRadius);
+    set("cardPad", state.cardPad);
+    set("cardFade", state.cardFade);
     set("margin", state.margin);
     set("marginTop", state.marginTop);
-    set("shapeScale", state.shapeScale);
+    set("dotGap", state.dotGap);
+    set("dotSize", state.dotSize);
     set("showFooter", state.footerMode !== "none");
     set("showCard", state.showCard);
     set("weekStartsMonday", state.weekStart !== "sunday");
     set("showAxes", state.showAxes);
     set("showTitle", state.showTitle);
     set("muteText", state.muteText);
+    set("titleSize", state.titleSize);
+    set("footerSize", state.footerSize);
     const device = $("#device");
-    if (device && state.deviceId) device.value = state.deviceId;
+    if (device && state.deviceId) {
+      device.value = state.deviceId;
+      const opt = device.selectedOptions[0];
+      if (opt?.dataset.w && opt?.dataset.h) {
+        state.width = Number(opt.dataset.w);
+        state.height = Number(opt.dataset.h);
+      }
+    }
+    updatePhoneAspect();
     document.querySelectorAll("[data-seg]").forEach((btn) => {
       const key = btn.dataset.seg;
       const map = {
@@ -321,7 +354,13 @@
 
     set("title", cfg.customTitle);
     p.set("show_title", boolParam(cfg.showTitle));
+    if (cfg.showTitle) {
+      set("title_size", cfg.titleSize);
+    }
     set("footer_mode", cfg.footerMode);
+    if (cfg.footerMode !== "none") {
+      set("footer_size", cfg.footerSize);
+    }
     p.set("mute_text", boolParam(cfg.muteText));
 
     if (["life", "year", "year-months", "monthly", "weekly", "habits"].includes(mode)) {
@@ -329,10 +368,13 @@
     }
 
     set("fg", cfg.fg);
+    set("fg_other", cfg.fgOther);
     set("highlight_color", cfg.highlightColor);
     set("fill_focus", cfg.fillFocus || "past");
     set("shape", shapeForAPI(cfg.dotShape));
     if (noGapForAPI(cfg.dotShape)) p.set("no_gap", "1");
+    else set("dot_gap", cfg.dotGap);
+    set("dot_size", cfg.dotSize);
     p.set("highlight_today", boolParam(cfg.highlightToday));
 
     set("bg_type", cfg.bgType || "match");
@@ -352,6 +394,9 @@
     if (cfg.showCard) {
       set("card_opacity", cfg.cardOpacity);
       set("card_radius", cfg.cardRadius);
+      set("card_pad_h", cfg.cardPad);
+      set("card_pad_v", cfg.cardPad);
+      set("card_fade", cfg.cardFade);
     }
 
     set("device", cfg.deviceId);
@@ -360,8 +405,13 @@
     set("screen", "lock");
     set("margin", cfg.margin);
     set("margin_top", cfg.marginTop);
-    set("shape_scale", cfg.shapeScale);
     return p;
+  }
+
+  function updatePhoneAspect() {
+    const phone = document.querySelector(".phone");
+    if (!phone || !state.width || !state.height) return;
+    phone.style.setProperty("--phone-ar", `${state.width} / ${state.height}`);
   }
 
   function studioQuery() {
@@ -384,6 +434,7 @@
 
   function refreshPreview() {
     saveToLocalStorage();
+    updatePhoneAspect();
     const u = wallpaperURL({ preview: true }) + "&_=" + Date.now();
     preview.src = u;
     loupeImg.src = u;
@@ -404,8 +455,10 @@
     if (bgColorField) bgColorField.hidden = state.bgType !== "solid";
     const cardFields = document.getElementById("cardFields");
     if (cardFields) cardFields.hidden = !state.showCard;
-    const customTitleField = document.getElementById("customTitleField");
-    if (customTitleField) customTitleField.hidden = !state.showTitle;
+    const titleFields = document.getElementById("titleFields");
+    if (titleFields) titleFields.hidden = !state.showTitle;
+    const footerSizeField = document.getElementById("footerSizeField");
+    if (footerSizeField) footerSizeField.hidden = state.footerMode === "none";
   }
 
   const lockDate = document.getElementById("lockDate");
@@ -462,10 +515,16 @@
     ["gridOpacity", "gridOpacity", Number],
     ["cardOpacity", "cardOpacity", Number],
     ["cardRadius", "cardRadius", Number],
+    ["cardPad", "cardPad", Number],
+    ["cardFade", "cardFade", Number],
     ["margin", "margin", Number],
     ["marginTop", "marginTop", Number],
-    ["shapeScale", "shapeScale", Number],
+    ["dotGap", "dotGap", Number],
+    ["dotSize", "dotSize", Number],
+    ["titleSize", "titleSize", Number],
+    ["footerSize", "footerSize", Number],
     ["fg", "fg"],
+    ["fgOther", "fgOther"],
     ["bg", "bg"],
     ["highlightColor", "highlightColor"],
   ];
@@ -479,8 +538,6 @@
     el.addEventListener("input", () => {
       if (el.type === "range" || el.type === "number" || el.type === "color") {
         state[key] = cast ? cast(el.value) : el.value;
-        const out = document.querySelector(`[data-val="${id}"]`);
-        if (out) out.textContent = el.value;
         refreshPreview();
       }
     });
@@ -491,6 +548,7 @@
     state.deviceId = e.target.value;
     state.width = Number(opt.dataset.w);
     state.height = Number(opt.dataset.h);
+    updatePhoneAspect();
     refreshPreview();
   });
 

@@ -11,9 +11,6 @@ import (
 
 	"github.com/grin/life-dots/internal/calendar"
 	"github.com/grin/life-dots/internal/model"
-	"golang.org/x/image/font"
-	"golang.org/x/image/font/basicfont"
-	"golang.org/x/image/math/fixed"
 )
 
 // RenderPNG builds a wallpaper PNG. photo is optional request-scoped POST body image.
@@ -125,13 +122,13 @@ func RenderPNG(cfg model.Config, photo image.Image, now time.Time) ([]byte, erro
 
 	// Title
 	if grid.Title != "" {
-		drawText(bg, m.Width/2, int(m.TitleY+m.TitleSize), grid.Title, textC, true)
+		drawText(bg, m.Width/2, int(m.TitleY+m.TitleSize), grid.Title, textC, true, m.TitleSize)
 	}
 
 	// Footer stats
 	footer := buildFooter(cfg, grid, now)
 	if footer != "" {
-		drawText(bg, m.Width/2, int(m.FooterY), footer, chromeC, true)
+		drawText(bg, m.Width/2, int(m.FooterY), footer, chromeC, true, m.FootSize)
 		// Dual-tone: if "left · right", color left with accent
 		if strings.Contains(footer, " · ") && cfg.ShowProgress {
 			parts := strings.SplitN(footer, " · ", 2)
@@ -142,7 +139,8 @@ func RenderPNG(cfg model.Config, photo image.Image, now time.Time) ([]byte, erro
 	}
 
 	if cfg.ShowBranding {
-		drawText(bg, m.Width/2, m.Height-int(float64(m.Height)*0.04), "life-dots", muted, true)
+		brandSize := math.Max(10, m.FootSize*0.85)
+		drawText(bg, m.Width/2, m.Height-int(float64(m.Height)*0.04), "life-dots", muted, true, brandSize)
 	}
 
 	var buf bytes.Buffer
@@ -478,15 +476,15 @@ func drawAxes(dst *image.RGBA, grid *calendar.Grid, m LayoutMetrics, c color.RGB
 		}
 		x := m.GridX + cellOffset(pos, m.DotSize, m.Gap, colGap) + m.DotSize/2
 		y := m.GridY - m.AxisSize*1.2
-		drawText(dst, int(x), int(y), label, c, true)
+		drawText(dst, int(x), int(y), label, c, true, m.AxisSize)
 	}
 	if ax.TopTitle != "" {
-		drawText(dst, int(m.GridX+gapStride(grid.Columns, m.DotSize, m.Gap, colGap)/2), int(m.GridY-m.AxisSize*2.5), ax.TopTitle, c, true)
+		drawText(dst, int(m.GridX+gapStride(grid.Columns, m.DotSize, m.Gap, colGap)/2), int(m.GridY-m.AxisSize*2.5), ax.TopTitle, c, true, m.AxisSize)
 	}
 	for _, pl := range ax.Placed {
 		x := m.GridX + cellOffset(pl.Col, m.DotSize, m.Gap, colGap) + m.DotSize/2
 		y := m.GridY + cellOffset(pl.Row, m.DotSize, m.Gap, rowGap) - m.AxisSize*1.15
-		drawText(dst, int(x), int(y), pl.Text, c, true)
+		drawText(dst, int(x), int(y), pl.Text, c, true, m.AxisSize)
 	}
 	for i, label := range ax.Left {
 		pos := i
@@ -495,7 +493,7 @@ func drawAxes(dst *image.RGBA, grid *calendar.Grid, m LayoutMetrics, c color.RGB
 		}
 		x := m.GridX - m.AxisSize*1.5
 		y := m.GridY + cellOffset(pos, m.DotSize, m.Gap, rowGap) + m.DotSize/2
-		drawText(dst, int(x), int(y), label, c, true)
+		drawText(dst, int(x), int(y), label, c, true, m.AxisSize)
 	}
 	for i, icon := range ax.LeftIcons {
 		pos := i
@@ -509,31 +507,10 @@ func drawAxes(dst *image.RGBA, grid *calendar.Grid, m LayoutMetrics, c color.RGB
 		}
 	}
 	if ax.LeftTitle != "" {
-		drawText(dst, int(m.GridX-m.AxisSize*2.8), int(m.GridY+gapStride(grid.Rows, m.DotSize, m.Gap, rowGap)/2), ax.LeftTitle, c, true)
+		drawText(dst, int(m.GridX-m.AxisSize*2.8), int(m.GridY+gapStride(grid.Rows, m.DotSize, m.Gap, rowGap)/2), ax.LeftTitle, c, true, m.AxisSize)
 	}
 }
 
 func drawCenteredLabel(dst *image.RGBA, x, y, size float64, label string, c color.RGBA) {
-	drawText(dst, int(x+size/2), int(y+size*0.7), label, c, true)
-}
-
-func drawText(dst *image.RGBA, x, y int, s string, c color.RGBA, center bool) {
-	face := basicfont.Face7x13
-	lines := strings.Split(s, "\n")
-	for li, line := range lines {
-		w := font.MeasureString(face, line).Ceil()
-		xx := x
-		if center {
-			xx = x - w/2
-		}
-		yy := y + li*14
-		point := fixed.Point26_6{X: fixed.I(xx), Y: fixed.I(yy)}
-		d := &font.Drawer{
-			Dst:  dst,
-			Src:  image.NewUniform(c),
-			Face: face,
-			Dot:  point,
-		}
-		d.DrawString(line)
-	}
+	drawText(dst, int(x+size/2), int(y+size*0.7), label, c, true, math.Max(8, size*0.45))
 }

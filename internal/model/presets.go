@@ -18,7 +18,10 @@ type Device struct {
 var Devices = []Device{
 	// iPhone
 	{ID: "iphone-se", Name: "iPhone SE", Width: 750, Height: 1334, Group: "iPhone"},
-	{ID: "iphone-13-mini", Name: "iPhone 13 mini", Width: 1080, Height: 2340, Group: "iPhone"},
+	// Wallpaper size uses UIKit @3x (375×812→1125×2436). The OLED panel is
+	// 1080×2340 (@2.88x); generating at panel size makes iOS scale the image up
+	// ~4% and crop when setting lock-screen wallpaper.
+	{ID: "iphone-13-mini", Name: "iPhone 13 mini", Width: 1125, Height: 2436, Group: "iPhone"},
 	{ID: "iphone-13", Name: "iPhone 13 / 13 Pro / 14", Width: 1170, Height: 2532, Group: "iPhone"},
 	{ID: "iphone-14-pro", Name: "iPhone 14 Pro", Width: 1179, Height: 2556, Group: "iPhone"},
 	{ID: "iphone-13-pro-max", Name: "iPhone 13 Pro Max / 14 Plus", Width: 1284, Height: 2778, Group: "iPhone"},
@@ -76,10 +79,13 @@ func ResolveColors(cfg Config) Colors {
 	if bg == "" {
 		bg = "#000000"
 	}
-	muted := mixHex(bg, fg, 0.22)
-	past, future := fg, muted
+	other := normalizeHex(cfg.FgOther)
+	if other == "" {
+		other = mixHex(bg, fg, 0.22)
+	}
+	past, future := fg, other
 	if cfg.FillFocus == FillFuture {
-		past, future = muted, fg
+		past, future = other, fg
 	}
 	c := Colors{
 		Background: bg,

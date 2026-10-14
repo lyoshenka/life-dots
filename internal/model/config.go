@@ -172,13 +172,16 @@ type Config struct {
 	DailyCounts  map[string]int `json:"dailyCounts,omitempty"`
 
 	// Appearance
-	Fg               string     `json:"fg,omitempty"` // foreground / highlighted dots
-	Bg               string     `json:"bg,omitempty"` // background
+	Fg               string     `json:"fg,omitempty"`      // primary / highlighted dots
+	FgOther          string     `json:"fgOther,omitempty"` // non-primary dots (empty = auto-mix)
+	Bg               string     `json:"bg,omitempty"`      // background
 	CustomColors     *Colors    `json:"customColors,omitempty"`
 	DotShape         DotShape   `json:"dotShape"`
 	ShapeStyle       ShapeStyle `json:"shapeStyle"`
 	OutlinedFillPast bool       `json:"outlinedFillPast"`
 	NoGap            bool       `json:"noGap"`
+	DotGap           float64    `json:"dotGap"`  // gap between dots in px; ignored when NoGap
+	DotSize          float64    `json:"dotSize"` // mark size in px; 0 = auto-fill available space
 	FillFocus        FillFocus  `json:"fillFocus"` // past|future — which dots use Fg
 	HighlightToday   bool       `json:"highlightToday"`
 	HighlightColor   string     `json:"highlightColor,omitempty"`
@@ -200,7 +203,8 @@ type Config struct {
 	CardStyle       CardStyle `json:"cardStyle"`
 	CardColor       string    `json:"cardColor,omitempty"`
 	CardOpacity     float64   `json:"cardOpacity"` // 0–100
-	CardRadius      float64   `json:"cardRadius"`  // 0–50
+	CardRadius      float64   `json:"cardRadius"`  // px
+	CardFade        float64   `json:"cardFade"`    // soft edge fade width in px; 0 = hard edge
 	CardBorderW     float64   `json:"cardBorderW"`
 	CardBorderColor string    `json:"cardBorderColor,omitempty"`
 	CardPadH        float64   `json:"cardPadH"`
@@ -214,6 +218,8 @@ type Config struct {
 	ShowProgress bool       `json:"showProgress"`
 	MuteText     bool       `json:"muteText"` // muted color for footer + axis labels
 	FooterMode   FooterMode `json:"footerMode"`
+	TitleSize    float64    `json:"titleSize"`  // title font size in px
+	FooterSize   float64    `json:"footerSize"` // footer font size in px
 
 	// Layout / device
 	DeviceID       string       `json:"deviceId"`
@@ -228,8 +234,7 @@ type Config struct {
 	CustomPadBottom float64     `json:"customPadBottom"`
 	Margin         float64      `json:"margin"`     // side inset in px
 	MarginTop      float64      `json:"marginTop"`  // top/bottom inset in px
-	ShapeScale     float64      `json:"shapeScale"` // 50–150
-	StatsScale     float64      `json:"statsScale"` // 50–150
+	StatsScale     float64      `json:"statsScale"` // 50–150 (legacy title/footer chrome)
 
 	LockPadTopPercent    float64 `json:"lockPadTopPercent,omitempty"`
 	LockPadBottomPercent float64 `json:"lockPadBottomPercent,omitempty"`
@@ -261,9 +266,12 @@ func DefaultConfig() Config {
 		StartDate:    now.Format("2006-01-02"),
 		EndDate:      now.AddDate(0, 3, 0).Format("2006-01-02"),
 		Fg:             "#FFFFFF",
+		FgOther:        "",
 		Bg:             "#000000",
 		DotShape:       ShapeCircle,
 		ShapeStyle:     StyleFilled,
+		DotGap:         12,
+		DotSize:        26,
 		FillFocus:      FillPast,
 		HighlightToday: true,
 		HighlightColor: "#FF6B4A", // matches studio --accent
@@ -276,10 +284,11 @@ func DefaultConfig() Config {
 		GridOpacity:    100,
 		ShowCard:       false,
 		CardStyle:      CardFlat,
-		CardOpacity:    28,
-		CardRadius:     24,
-		CardPadH:       24,
-		CardPadV:       32,
+		CardOpacity:    35,
+		CardRadius:     28,
+		CardFade:       0,
+		CardPadH:       28,
+		CardPadV:       28,
 		ShowLabels:     false,
 		ShowAxes:       false,
 		ShowTitle:      true,
@@ -287,6 +296,8 @@ func DefaultConfig() Config {
 		ShowProgress:   true,
 		MuteText:       false,
 		FooterMode:     FooterNumbers,
+		TitleSize:      84,
+		FooterSize:     48,
 		DeviceID:     "iphone-16-pro",
 		Width:        1206,
 		Height:       2622,
@@ -294,7 +305,6 @@ func DefaultConfig() Config {
 		WidgetLayout: WidgetNone,
 		Margin:       48,
 		MarginTop:    48,
-		ShapeScale:   100,
 		StatsScale:   100,
 	}
 }

@@ -803,4 +803,14 @@ func TestE2E_ModelCatalogs(t *testing.T) {
 	if c.Future != "#38BDF8" || c.Past == "#38BDF8" {
 		t.Fatalf("fill focus future: %+v", c)
 	}
+	cfg.FillFocus = model.FillPast
+	cfg.FgOther = "#112233"
+	c = model.ResolveColors(cfg)
+	if c.Past != "#38BDF8" || c.Future != "#112233" {
+		t.Fatalf("fg other: %+v", c)
+	}
+	mini := model.DeviceByID("iphone-13-mini")
+	if mini == nil || mini.Width != 1125 || mini.Height != 2436 {
+		t.Fatalf("iphone-13-mini size: %+v", mini)
+	}
 }

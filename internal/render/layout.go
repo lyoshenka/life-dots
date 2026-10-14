@@ -55,9 +55,24 @@ func cellOffset(index int, size, gap float64, g *calendar.GroupGap) float64 {
 	return float64(groups)*(float64(every)*(size+gap)-gap+extra) + float64(within)*(size+gap)
 }
 
+// ConfigPxScale maps studio/device pixel values onto the render canvas.
+// Preview (and any downscaled width) must shrink dots/gaps/margins with the image.
+func ConfigPxScale(cfg model.Config) float64 {
+	if cfg.Width <= 0 {
+		return 1
+	}
+	if d := model.DeviceByID(cfg.DeviceID); d != nil && d.Width > 0 {
+		s := float64(cfg.Width) / float64(d.Width)
+		if s > 0 {
+			return s
+		}
+	}
+	return 1
+}
+
 // ComputeLayout derives padding and dot sizes for the wallpaper.
 // Side inset is Margin (px); vertical inset is MarginTop (px).
-// The grid always fills the available width; title stays above and footer below.
+// DotSize and DotGap are independent device pixels (scaled to the canvas).
 func ComputeLayout(cfg model.Config, grid *calendar.Grid) LayoutMetrics {
 	w, h := cfg.Width, cfg.Height
 	if w <= 0 {
@@ -67,13 +82,15 @@ func ComputeLayout(cfg model.Config, grid *calendar.Grid) LayoutMetrics {
 		h = 2532
 	}
 
-	padSide := cfg.Margin
-	if padSide <= 0 {
-		padSide = 48
+	px := ConfigPxScale(cfg)
+
+	padSide := cfg.Margin * px
+	if cfg.Margin <= 0 {
+		padSide = 48 * px
 	}
-	padTop := cfg.MarginTop
-	if padTop <= 0 {
-		padTop = 48
+	padTop := cfg.MarginTop * px
+	if cfg.MarginTop <= 0 {
+		padTop = 48 * px
 	}
 	// Bottom uses side margin so increasing top margin pushes the grid down
 	// instead of shrinking both ends equally.
@@ -95,20 +112,21 @@ func ComputeLayout(cfg model.Config, grid *calendar.Grid) LayoutMetrics {
 		contentH = 8
 	}
 
-	shapeScale := cfg.ShapeScale / 100
-	if shapeScale == 0 {
-		shapeScale = 1
-	}
-
-	titleSize := math.Max(14, contentW*0.045) * (cfg.StatsScale / 100)
-	if cfg.StatsScale == 0 {
+	titleSize := cfg.TitleSize * px
+	if cfg.TitleSize <= 0 {
 		titleSize = math.Max(14, contentW*0.045)
+		if cfg.StatsScale > 0 {
+			titleSize *= cfg.StatsScale / 100
+		}
 	}
-	footSize := math.Max(12, contentW*0.032) * (cfg.StatsScale / 100)
-	if cfg.StatsScale == 0 {
+	footSize := cfg.FooterSize * px
+	if cfg.FooterSize <= 0 {
 		footSize = math.Max(12, contentW*0.032)
+		if cfg.StatsScale > 0 {
+			footSize *= cfg.StatsScale / 100
+		}
 	}
-	axisSize := math.Max(8, contentW*0.022)
+	axisSize := math.Max(8*px, contentW*0.022)
 
 	hasTitle := grid.Title != ""
 	hasFooter := cfg.FooterMode != model.FooterNone
@@ -167,39 +185,18 @@ func ComputeLayout(cfg model.Config, grid *calendar.Grid) LayoutMetrics {
 		rowGap = grid.Grouping.Rows
 	}
 
-	gapRatio := 0.35
-	if cfg.NoGap {
-		gapRatio = 0
+	reqGap := cfg.DotGap * px
+	if reqGap < 0 {
+		reqGap = 0
 	}
+	if cfg.NoGap {
+		reqGap = 0
+	}
+	reqDot := cfg.DotSize * px
 
-	// Size for full available width, then clamp by height if needed.
-	dot := maxDotForWidth(cols, availW, gapRatio, colGap)
-	gap := dot * gapRatio
+	dot, gap := fitDotGap(cols, rows, availW, availH, reqDot, reqGap, colGap, rowGap)
 	gridW := gapStride(cols, dot, gap, colGap)
 	gridH := gapStride(rows, dot, gap, rowGap)
-	if gridH > availH && gridH > 0 {
-		fit := availH / gridH
-		dot *= fit
-		gap *= fit
-		gridW = gapStride(cols, dot, gap, colGap)
-		gridH = gapStride(rows, dot, gap, rowGap)
-	}
-
-	// Shape scale changes mark size relative to gaps (re-fit width after).
-	if shapeScale != 1 {
-		dot *= shapeScale
-		gridW = gapStride(cols, dot, gap, colGap)
-		gridH = gapStride(rows, dot, gap, rowGap)
-		if gridW > availW || gridH > availH {
-			fit := math.Min(availW/gridW, availH/gridH)
-			if fit < 1 {
-				dot *= fit
-				gap *= fit
-				gridW = gapStride(cols, dot, gap, colGap)
-				gridH = gapStride(rows, dot, gap, rowGap)
-			}
-		}
-	}
 
 	gridRegionTop := padTop + chromeTop + axisTop
 	gridRegionBot := padTop + contentH - chromeBot
@@ -236,30 +233,76 @@ func ComputeLayout(cfg model.Config, grid *calendar.Grid) LayoutMetrics {
 		TitleSize: titleSize, FootSize: footSize, AxisSize: axisSize,
 	}
 
-	cardPadH := cfg.CardPadH
-	cardPadV := cfg.CardPadV
-	if cardPadH == 0 {
-		cardPadH = 24
+	cardPadH := cfg.CardPadH * px
+	cardPadV := cfg.CardPadV * px
+	if cardPadH < 0 {
+		cardPadH = 0
 	}
-	if cardPadV == 0 {
-		cardPadV = 32
+	if cardPadV < 0 {
+		cardPadV = 0
 	}
-	m.CardRect.X = gridX - cardPadH - axisLeft
-	m.CardRect.Y = gridY - cardPadV - axisTop
-	m.CardRect.W = gridW + 2*cardPadH + axisLeft
-	m.CardRect.H = gridH + 2*cardPadV + axisTop
+	// Card wraps the full content block: title, axes, grid, and footer.
+	contentLeft := gridX - axisLeft
+	contentRight := gridX + gridW
+	contentTop := gridY - axisTop
+	if hasTitle {
+		contentTop = math.Min(contentTop, titleY)
+	}
+	contentBot := gridY + gridH
+	if hasFooter {
+		// FooterY is the text baseline; include a little descent.
+		contentBot = math.Max(contentBot, footerY+footSize*0.25)
+	}
+	m.CardRect.X = contentLeft - cardPadH
+	m.CardRect.Y = contentTop - cardPadV
+	m.CardRect.W = (contentRight - contentLeft) + 2*cardPadH
+	m.CardRect.H = (contentBot - contentTop) + 2*cardPadV
 	return m
 }
 
-// maxDotForWidth finds the largest dot size whose grid width equals availW.
-func maxDotForWidth(cols int, availW, gapRatio float64, colGap *calendar.GroupGap) float64 {
-	lo, hi := 0.5, availW
+func gridFits(cols, rows int, availW, availH, dot, gap float64, colGap, rowGap *calendar.GroupGap) bool {
+	return gapStride(cols, dot, gap, colGap) <= availW+1e-6 &&
+		gapStride(rows, dot, gap, rowGap) <= availH+1e-6
+}
+
+// fitDotGap keeps mark size and gap independent.
+// When both won't fit, gap shrinks first; size only shrinks if even gap=0 is too tight.
+// reqDot <= 0 means "auto": largest size that still honors reqGap (gap still wins over fill).
+func fitDotGap(cols, rows int, availW, availH, reqDot, reqGap float64, colGap, rowGap *calendar.GroupGap) (dot, gap float64) {
+	if reqGap < 0 {
+		reqGap = 0
+	}
+	if reqDot <= 0 {
+		// Auto size: fill space at the requested gap. Not used by the studio defaults.
+		return maxDotForBox(cols, rows, availW, availH, reqGap, colGap, rowGap), reqGap
+	}
+	dot, gap = reqDot, reqGap
+	if gridFits(cols, rows, availW, availH, dot, gap, colGap, rowGap) {
+		return dot, gap
+	}
+	// Prefer keeping mark size; shrink spacing until it fits.
+	gap = maxGapForBox(cols, rows, availW, availH, dot, colGap, rowGap)
+	if gap < 0 {
+		gap = 0
+	}
+	if gridFits(cols, rows, availW, availH, dot, gap, colGap, rowGap) {
+		return dot, gap
+	}
+	// Size itself is too large even with no gap — cap size, keep gap at 0.
+	// (Do not re-introduce gap here: that would make spacing change mark size.)
+	return maxDotForBox(cols, rows, availW, availH, 0, colGap, rowGap), 0
+}
+
+// maxDotForBox finds the largest mark size that fits availW×availH with a fixed gap.
+func maxDotForBox(cols, rows int, availW, availH, gap float64, colGap, rowGap *calendar.GroupGap) float64 {
+	lo, hi := 0.5, math.Min(availW, availH)
+	if hi < lo {
+		hi = lo
+	}
 	dot := lo
 	for i := 0; i < 28; i++ {
 		mid := (lo + hi) / 2
-		g := mid * gapRatio
-		gw := gapStride(cols, mid, g, colGap)
-		if gw <= availW {
+		if gridFits(cols, rows, availW, availH, mid, gap, colGap, rowGap) {
 			dot = mid
 			lo = mid
 		} else {
@@ -267,4 +310,24 @@ func maxDotForWidth(cols int, availW, gapRatio float64, colGap *calendar.GroupGa
 		}
 	}
 	return dot
+}
+
+// maxGapForBox finds the largest gap that fits with a fixed mark size.
+// Returns -1 if even gap=0 does not fit.
+func maxGapForBox(cols, rows int, availW, availH, dot float64, colGap, rowGap *calendar.GroupGap) float64 {
+	if !gridFits(cols, rows, availW, availH, dot, 0, colGap, rowGap) {
+		return -1
+	}
+	lo, hi := 0.0, math.Max(availW, availH)
+	best := 0.0
+	for i := 0; i < 28; i++ {
+		mid := (lo + hi) / 2
+		if gridFits(cols, rows, availW, availH, dot, mid, colGap, rowGap) {
+			best = mid
+			lo = mid
+		} else {
+			hi = mid
+		}
+	}
+	return best
 }

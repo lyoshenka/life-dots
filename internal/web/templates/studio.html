@@ -4,9 +4,6 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Life Dots</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/static/styles.css"/>
 </head>
 <body>
@@ -118,17 +115,36 @@
         </div>
         <label class="check" data-mode-panel="life,year,year-months,monthly,weekly,habits"><input type="checkbox" id="showAxes"/> Show axis labels</label>
         <label class="check"><input type="checkbox" id="showTitle" checked/> Show title</label>
-        <div class="field plain-case" id="customTitleField"><label for="customTitle">Custom Title</label><input id="customTitle" type="text" placeholder="My life in weeks"/></div>
+        <div id="titleFields">
+          <div class="field plain-case" id="customTitleField"><label for="customTitle">Custom Title</label><input id="customTitle" type="text" placeholder="My life in weeks"/></div>
+          <div class="field" id="titleSizeField">
+            <label for="titleSize">Title size</label>
+            <div class="input-group">
+              <input id="titleSize" type="number" min="8" max="200" value="84"/>
+              <span class="input-group-text">px</span>
+            </div>
+            <p class="field-help">Size of the title text above the dots.</p>
+          </div>
+        </div>
         <label class="check"><input type="checkbox" id="showFooter" checked/> Show footer</label>
+        <div class="field" id="footerSizeField">
+          <label for="footerSize">Footer size</label>
+          <div class="input-group">
+            <input id="footerSize" type="number" min="8" max="200" value="48"/>
+            <span class="input-group-text">px</span>
+          </div>
+          <p class="field-help">Size of the footer stats text under the dots.</p>
+        </div>
         <label class="check"><input type="checkbox" id="muteText"/> Mute text</label>
         <label class="check" data-mode-panel="life,year-months,monthly,weekly,custom" hidden><input type="checkbox" id="weekStartsMonday" checked/> Week starts on Monday</label>
       </div>
 
       <div class="panel">
         <h2>Foreground</h2>
-        <div class="color-row">
-          <div class="field"><label for="fg">Color</label><input id="fg" type="color" value="#ffffff"/></div>
-          <div class="field"><label for="highlightColor">Today</label><input id="highlightColor" type="color" value="#ff6b4a"/></div>
+        <div class="color-row color-row-3">
+          <div class="field"><label for="fg">Primary</label><input id="fg" type="color" value="#ffffff"/><p class="field-help">Color for highlighted dots (past or future, depending on focus).</p></div>
+          <div class="field"><label for="fgOther">Other</label><input id="fgOther" type="color" value="#383838"/><p class="field-help">Color for the non-primary dots.</p></div>
+          <div class="field"><label for="highlightColor">Today</label><input id="highlightColor" type="color" value="#ff6b4a"/><p class="field-help">Ring/highlight color for the current day.</p></div>
         </div>
         <div class="seg">
           <button type="button" data-seg="shape" data-value="circle" class="active">Circle</button>
@@ -136,10 +152,46 @@
           <button type="button" data-seg="shape" data-value="square">Square</button>
           <button type="button" data-seg="shape" data-value="square-nogap">Square (no gap)</button>
         </div>
-        <div class="field"><label for="marginTop">Top margin (px)</label><input id="marginTop" type="number" min="0" max="800" value="48"/></div>
-        <div class="field"><label for="margin">Side margin (px)</label><input id="margin" type="number" min="0" max="400" value="48"/></div>
-        <div class="field"><label for="shapeScale">Shape scale <span data-val="shapeScale">100</span>%</label><input id="shapeScale" type="range" min="50" max="150" value="100"/></div>
-        <div class="field"><label for="gridOpacity">Grid opacity <span data-val="gridOpacity">100</span>%</label><input id="gridOpacity" type="range" min="0" max="100" value="100"/></div>
+        <div class="field">
+          <label for="marginTop">Top margin</label>
+          <div class="input-group">
+            <input id="marginTop" type="number" min="0" max="800" value="48"/>
+            <span class="input-group-text">px</span>
+          </div>
+          <p class="field-help">Inset from the top of the wallpaper. Pushes the grid downward.</p>
+        </div>
+        <div class="field">
+          <label for="margin">Side margin</label>
+          <div class="input-group">
+            <input id="margin" type="number" min="0" max="400" value="48"/>
+            <span class="input-group-text">px</span>
+          </div>
+          <p class="field-help">Left and right inset. Also used as the bottom inset.</p>
+        </div>
+        <div class="field">
+          <label for="dotGap">Dot spacing</label>
+          <div class="input-group">
+            <input id="dotGap" type="number" min="0" max="200" value="12"/>
+            <span class="input-group-text">px</span>
+          </div>
+          <p class="field-help">Gap between dots in pixels. Ignored for Square (no gap).</p>
+        </div>
+        <div class="field">
+          <label for="dotSize">Dot size</label>
+          <div class="input-group">
+            <input id="dotSize" type="number" min="1" max="200" value="26"/>
+            <span class="input-group-text">px</span>
+          </div>
+          <p class="field-help">Mark diameter in device pixels. Independent of spacing. On dense grids (Life), values that don’t fit are capped.</p>
+        </div>
+        <div class="field">
+          <label for="gridOpacity">Grid opacity</label>
+          <div class="input-group">
+            <input id="gridOpacity" type="number" min="0" max="100" value="100"/>
+            <span class="input-group-text">%</span>
+          </div>
+          <p class="field-help">Overall transparency of the entire dot grid.</p>
+        </div>
         <div class="seg seg-tight">
           <button type="button" data-seg="fillFocus" data-value="past" class="active">Highlight Past</button>
           <button type="button" data-seg="fillFocus" data-value="future">Highlight Future</button>
@@ -162,15 +214,79 @@
             <button type="button" data-seg="bgRotate" data-value="180">180°</button>
             <button type="button" data-seg="bgRotate" data-value="270">270°</button>
           </div>
-          <div class="field"><label for="bgBlur">Blur <span data-val="bgBlur">0</span>px</label><input id="bgBlur" type="range" min="0" max="20" value="0"/></div>
-          <div class="field"><label for="bgDim">Dim <span data-val="bgDim">30</span>%</label><input id="bgDim" type="range" min="0" max="80" value="30"/></div>
-          <div class="field"><label for="bgFocalX">Focal X <span data-val="bgFocalX">50</span>%</label><input id="bgFocalX" type="range" min="0" max="100" value="50"/></div>
-          <div class="field"><label for="bgFocalY">Focal Y <span data-val="bgFocalY">50</span>%</label><input id="bgFocalY" type="range" min="0" max="100" value="50"/></div>
+          <div class="field-row">
+            <div class="field">
+              <label for="bgBlur">Blur</label>
+              <div class="input-group">
+                <input id="bgBlur" type="number" min="0" max="40" value="0"/>
+                <span class="input-group-text">px</span>
+              </div>
+              <p class="field-help">Softens the photo.</p>
+            </div>
+            <div class="field">
+              <label for="bgDim">Dim</label>
+              <div class="input-group">
+                <input id="bgDim" type="number" min="0" max="100" value="30"/>
+                <span class="input-group-text">%</span>
+              </div>
+              <p class="field-help">Darkens the photo.</p>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="bgFocalX">Focal X</label>
+              <div class="input-group">
+                <input id="bgFocalX" type="number" min="0" max="100" value="50"/>
+                <span class="input-group-text">%</span>
+              </div>
+              <p class="field-help">Horizontal crop focus.</p>
+            </div>
+            <div class="field">
+              <label for="bgFocalY">Focal Y</label>
+              <div class="input-group">
+                <input id="bgFocalY" type="number" min="0" max="100" value="50"/>
+                <span class="input-group-text">%</span>
+              </div>
+              <p class="field-help">Vertical crop focus.</p>
+            </div>
+          </div>
         </div>
         <label class="check"><input type="checkbox" id="showCard"/> Card behind dots</label>
         <div id="cardFields">
-          <div class="field" style="margin-top:0.75rem"><label for="cardOpacity">Card opacity <span data-val="cardOpacity">35</span>%</label><input id="cardOpacity" type="range" min="0" max="100" value="35"/></div>
-          <div class="field"><label for="cardRadius">Radius <span data-val="cardRadius">28</span></label><input id="cardRadius" type="range" min="0" max="50" value="28"/></div>
+          <div class="field" style="margin-top:0.75rem">
+            <label for="cardOpacity">Card opacity</label>
+            <div class="input-group">
+              <input id="cardOpacity" type="number" min="0" max="100" value="35"/>
+              <span class="input-group-text">%</span>
+            </div>
+            <p class="field-help">How solid the panel behind the grid appears.</p>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="cardRadius">Radius</label>
+              <div class="input-group">
+                <input id="cardRadius" type="number" min="0" max="200" value="28"/>
+                <span class="input-group-text">px</span>
+              </div>
+              <p class="field-help">Corner roundness.</p>
+            </div>
+            <div class="field">
+              <label for="cardPad">Padding</label>
+              <div class="input-group">
+                <input id="cardPad" type="number" min="0" max="400" value="28"/>
+                <span class="input-group-text">px</span>
+              </div>
+              <p class="field-help">Inset from card edge.</p>
+            </div>
+          </div>
+          <div class="field">
+            <label for="cardFade">Gradient</label>
+            <div class="input-group">
+              <input id="cardFade" type="number" min="0" max="400" value="0"/>
+              <span class="input-group-text">px</span>
+            </div>
+            <p class="field-help">Soft fade from the card edge inward. 0 keeps a hard edge.</p>
+          </div>
         </div>
       </div>
 

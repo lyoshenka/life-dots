@@ -15,7 +15,7 @@ Open `http://127.0.0.1:8080` on your Mac, configure your calendar, scan the QR w
 ## Features
 
 - **Modes**: life, year days, year months, quarters, monthly, weekly, goal/custom, habits
-- **Appearance**: foreground / today / background colors, past vs future highlight, shapes, flat card overlay, axis labels, device presets (iPhone 13–17 Pro Max, iPad, MacBook Air/Pro, Android)
+- **Appearance**: primary / other / today / background colors, dot spacing, past vs future highlight, shapes, Bitcount Ink on wallpaper text, flat card overlay, axis labels, device presets (iPhone 13–17 Pro Max, iPad, MacBook Air/Pro, Android)
 - **Photo behind dots**:
   - Photo URL in config — fetched on demand, kept in an in-memory LRU cache (up to 20 URLs, 14-day TTL)
   - iOS Shortcut POST of a Photos album image — request-scoped only (not cached)

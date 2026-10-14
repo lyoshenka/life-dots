@@ -66,6 +66,9 @@ func ApplyQuery(cfg *Config, q map[string][]string) {
 	if v := get("fg"); v != "" {
 		cfg.Fg = v
 	}
+	if v := get("fg_other"); v != "" {
+		cfg.FgOther = v
+	}
 	if v := get("bg"); v != "" {
 		cfg.Bg = v
 	}
@@ -109,6 +112,8 @@ func ApplyQuery(cfg *Config, q map[string][]string) {
 		cfg.ShapeStyle = ShapeStyle(v)
 	}
 	setBool("no_gap", &cfg.NoGap)
+	setFloat("dot_gap", &cfg.DotGap)
+	setFloat("dot_size", &cfg.DotSize)
 	if v := get("fill_focus"); v != "" {
 		cfg.FillFocus = FillFocus(v)
 	}
@@ -122,6 +127,7 @@ func ApplyQuery(cfg *Config, q map[string][]string) {
 	}
 	setFloat("card_opacity", &cfg.CardOpacity)
 	setFloat("card_radius", &cfg.CardRadius)
+	setFloat("card_fade", &cfg.CardFade)
 	setFloat("card_pad_h", &cfg.CardPadH)
 	setFloat("card_pad_v", &cfg.CardPadV)
 	setBool("show_axes", &cfg.ShowAxes)
@@ -133,12 +139,13 @@ func ApplyQuery(cfg *Config, q map[string][]string) {
 	if v := get("footer_mode"); v != "" {
 		cfg.FooterMode = FooterMode(v)
 	}
+	setFloat("title_size", &cfg.TitleSize)
+	setFloat("footer_size", &cfg.FooterSize)
 	if v := get("widget_layout"); v != "" {
 		cfg.WidgetLayout = WidgetLayout(v)
 	}
 	setFloat("margin", &cfg.Margin)
 	setFloat("margin_top", &cfg.MarginTop)
-	setFloat("shape_scale", &cfg.ShapeScale)
 	setFloat("stats_scale", &cfg.StatsScale)
 	if v := get("habits"); v != "" {
 		var habits []Habit

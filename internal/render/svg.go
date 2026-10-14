@@ -37,8 +37,20 @@ func RenderSVG(cfg model.Config, now time.Time) (string, error) {
 		if fill == "" {
 			fill = "#ffffff"
 		}
-		fmt.Fprintf(&b, `<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="%.1f" fill="%s" fill-opacity="%.2f"/>`,
-			m.CardRect.X, m.CardRect.Y, m.CardRect.W, m.CardRect.H, cfg.CardRadius, fill, op)
+		px := ConfigPxScale(cfg)
+		radius := cfg.CardRadius * px
+		fade := cfg.CardFade * px
+		if fade < 0 {
+			fade = 0
+		}
+		if fade > 0 {
+			fmt.Fprintf(&b, `<defs><filter id="cardFade" x="-20%%" y="-20%%" width="140%%" height="140%%"><feGaussianBlur stdDeviation="%.2f"/></filter></defs>`, fade/3)
+			fmt.Fprintf(&b, `<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="%.1f" fill="%s" fill-opacity="%.2f" filter="url(#cardFade)"/>`,
+				m.CardRect.X, m.CardRect.Y, m.CardRect.W, m.CardRect.H, radius, fill, op)
+		} else {
+			fmt.Fprintf(&b, `<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="%.1f" fill="%s" fill-opacity="%.2f"/>`,
+				m.CardRect.X, m.CardRect.Y, m.CardRect.W, m.CardRect.H, radius, fill, op)
+		}
 	}
 
 	var colGap, rowGap *calendar.GroupGap
@@ -82,9 +94,10 @@ func RenderSVG(cfg model.Config, now time.Time) (string, error) {
 		}
 	}
 
+	const fontFam = `'Bitcount Ink', system-ui, sans-serif`
 	if grid.Title != "" {
-		fmt.Fprintf(&b, `<text x="%d" y="%.1f" text-anchor="middle" fill="%s" font-family="system-ui,sans-serif" font-size="%.1f" font-weight="600">%s</text>`,
-			m.Width/2, m.TitleY+m.TitleSize, colors.Text, m.TitleSize, xmlEscape(grid.Title))
+		fmt.Fprintf(&b, `<text x="%d" y="%.1f" text-anchor="middle" fill="%s" font-family="%s" font-size="%.1f" font-weight="600">%s</text>`,
+			m.Width/2, m.TitleY+m.TitleSize, colors.Text, fontFam, m.TitleSize, xmlEscape(grid.Title))
 	}
 	footer := buildFooter(cfg, grid, now)
 	if footer != "" {
@@ -92,8 +105,8 @@ func RenderSVG(cfg model.Config, now time.Time) (string, error) {
 		if cfg.MuteText {
 			footerFill = colors.TextMuted
 		}
-		fmt.Fprintf(&b, `<text x="%d" y="%.1f" text-anchor="middle" fill="%s" font-family="system-ui,sans-serif" font-size="%.1f">%s</text>`,
-			m.Width/2, m.FooterY, footerFill, m.FootSize, xmlEscape(strings.ReplaceAll(footer, "\n", " · ")))
+		fmt.Fprintf(&b, `<text x="%d" y="%.1f" text-anchor="middle" fill="%s" font-family="%s" font-size="%.1f">%s</text>`,
+			m.Width/2, m.FooterY, footerFill, fontFam, m.FootSize, xmlEscape(strings.ReplaceAll(footer, "\n", " · ")))
 	}
 	b.WriteString(`</svg>`)
 	return b.String(), nil

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/grin/life-dots/internal/model"
+	xdraw "golang.org/x/image/draw"
 )
 
 // MaxPhotoBytes limits a single request-scoped photo decode.
@@ -187,6 +188,8 @@ func DecodePhoto(r io.Reader) (image.Image, error) {
 }
 
 // CoverCrop scales src to cover dstW×dstH with focal point (0–100).
+// Uses Catmull–Rom resampling so photo detail is retained; when no scale is
+// needed it copies pixels directly (no resample).
 func CoverCrop(src image.Image, dstW, dstH int, focalX, focalY float64) *image.RGBA {
 	sb := src.Bounds()
 	sw, sh := sb.Dx(), sb.Dy()
@@ -196,7 +199,6 @@ func CoverCrop(src image.Image, dstW, dstH int, focalX, focalY float64) *image.R
 	scale := math.Max(float64(dstW)/float64(sw), float64(dstH)/float64(sh))
 	nw := int(math.Ceil(float64(sw) * scale))
 	nh := int(math.Ceil(float64(sh) * scale))
-	scaled := resizeNearest(src, nw, nh)
 
 	if focalX < 0 {
 		focalX = 50
@@ -216,22 +218,18 @@ func CoverCrop(src image.Image, dstW, dstH int, focalX, focalY float64) *image.R
 	oy := int(float64(maxY) * focalY / 100)
 
 	out := image.NewRGBA(image.Rect(0, 0, dstW, dstH))
+
+	// Exact size match: crop only — preserves every source pixel.
+	if nw == sw && nh == sh {
+		draw.Draw(out, out.Bounds(), src, image.Pt(sb.Min.X+ox, sb.Min.Y+oy), draw.Src)
+		return out
+	}
+
+	// High-quality scale to cover size, then crop to the focal window.
+	scaled := image.NewRGBA(image.Rect(0, 0, nw, nh))
+	xdraw.CatmullRom.Scale(scaled, scaled.Bounds(), src, sb, draw.Src, nil)
 	draw.Draw(out, out.Bounds(), scaled, image.Pt(ox, oy), draw.Src)
 	return out
-}
-
-func resizeNearest(src image.Image, w, h int) *image.RGBA {
-	sb := src.Bounds()
-	sw, sh := sb.Dx(), sb.Dy()
-	dst := image.NewRGBA(image.Rect(0, 0, w, h))
-	for y := 0; y < h; y++ {
-		sy := sb.Min.Y + y*sh/h
-		for x := 0; x < w; x++ {
-			sx := sb.Min.X + x*sw/w
-			dst.Set(x, y, src.At(sx, sy))
-		}
-	}
-	return dst
 }
 
 // BoxBlur applies a separable box blur (approximation of Gaussian). radius in pixels.
@@ -313,16 +311,45 @@ func ApplyDim(dst *image.RGBA, dimPercent float64, tint color.RGBA) {
 }
 
 // DrawRoundedRect fills a rounded rectangle with optional border.
-func DrawRoundedRect(dst *image.RGBA, r image.Rectangle, radius float64, fill color.RGBA, borderW float64, border color.RGBA) {
+// fadePx > 0 feathers fill opacity toward the outside over that many pixels.
+func DrawRoundedRect(dst *image.RGBA, r image.Rectangle, radius float64, fill color.RGBA, borderW float64, border color.RGBA, fadePx float64) {
+	if fadePx < 0 {
+		fadePx = 0
+	}
+	b := dst.Bounds()
 	for y := r.Min.Y; y < r.Max.Y; y++ {
+		if y < b.Min.Y || y >= b.Max.Y {
+			continue
+		}
 		for x := r.Min.X; x < r.Max.X; x++ {
+			if x < b.Min.X || x >= b.Max.X {
+				continue
+			}
 			d := sdfRoundRect(float64(x)+0.5, float64(y)+0.5, float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy()), radius)
+			if fadePx > 0 {
+				// Soft outer fade: full inside (-fadePx), transparent at the rim (0).
+				if d >= 1 {
+					continue
+				}
+				t := 1.0
+				if d >= 0 {
+					t = 1 - d
+				} else if d > -fadePx {
+					t = -d / fadePx
+				}
+				if t <= 0 {
+					continue
+				}
+				c := fill
+				c.A = uint8(math.Max(0, math.Min(255, float64(fill.A)*t)))
+				dst.SetRGBA(x, y, alphaOver(dst.RGBAAt(x, y), c))
+				continue
+			}
 			if d < -borderW {
 				dst.SetRGBA(x, y, alphaOver(dst.RGBAAt(x, y), fill))
 			} else if d < 0 && borderW > 0 {
 				dst.SetRGBA(x, y, alphaOver(dst.RGBAAt(x, y), border))
 			} else if d < 1 {
-				// soft edge
 				a := uint8(math.Max(0, math.Min(255, (1-d)*float64(fill.A))))
 				c := fill
 				c.A = a
@@ -481,7 +508,8 @@ func DrawGlassCard(bg *image.RGBA, rect image.Rectangle, cfg model.Config) {
 	if !cfg.ShowCard {
 		return
 	}
-	radius := cfg.CardRadius
+	px := ConfigPxScale(cfg)
+	radius := cfg.CardRadius * px
 	if radius < 0 {
 		radius = 0
 	}
@@ -502,5 +530,9 @@ func DrawGlassCard(bg *image.RGBA, rect image.Rectangle, cfg model.Config) {
 	if cfg.CardBorderColor == "" {
 		border = color.RGBA{255, 255, 255, 80}
 	}
-	DrawRoundedRect(bg, rect, radius, fill, cfg.CardBorderW, border)
+	fade := cfg.CardFade * px
+	if fade < 0 {
+		fade = 0
+	}
+	DrawRoundedRect(bg, rect, radius, fill, cfg.CardBorderW*px, border, fade)
 }

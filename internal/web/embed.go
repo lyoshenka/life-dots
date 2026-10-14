@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/grin/life-dots/internal/fonts"
 	"github.com/grin/life-dots/internal/model"
 )
 
@@ -53,10 +54,16 @@ func RenderPWA(w io.Writer, cfg model.Config, host string) error {
 	return pwaTmpl.ExecuteTemplate(w, "pwa.html", data)
 }
 
-// ServeStatic serves embedded CSS/JS.
+// ServeStatic serves embedded CSS/JS and local font files.
 func ServeStatic(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/static/")
-	data, err := fs.ReadFile(assets, "static/"+path)
+	var data []byte
+	var err error
+	if strings.HasPrefix(path, "fonts/") {
+		data, err = fonts.Files.ReadFile(strings.TrimPrefix(path, "fonts/"))
+	} else {
+		data, err = fs.ReadFile(assets, "static/"+path)
+	}
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -68,6 +75,9 @@ func ServeStatic(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 	case strings.HasSuffix(path, ".svg"):
 		w.Header().Set("Content-Type", "image/svg+xml")
+	case strings.HasSuffix(path, ".ttf"):
+		w.Header().Set("Content-Type", "font/ttf")
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 	}
 	_, _ = w.Write(data)
 }

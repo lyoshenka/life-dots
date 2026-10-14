@@ -184,7 +184,8 @@ override defaults. Shared with /wallpaper.png via the same ApplyQuery logic.
     --screen lock|home
     --widget-layout none|top|bottom|custom
     --margin N --margin-top N
-    --shape-scale 50–150
+    --dot-gap N --dot-size N   Gap / mark size in px (dot-size 0 = auto)
+    --title-size N --footer-size N
     --stats-scale 50–150
 
   Output (CLI-only):
@@ -237,8 +238,6 @@ func runServe(args []string) {
 	_ = fs.Parse(flags)
 	srv := server.New(*addr)
 	fmt.Printf("life-dots listening on http://127.0.0.1%s\n", normalizeAddr(*addr))
-	fmt.Printf("studio: open that URL on this Mac, then scan the QR from your iPhone\n")
-	fmt.Printf("config: studio uses localStorage; wallpaper URLs use query params\n")
 	if err := srv.ListenAndServe(); err != nil {
 		fmt.Fprintf(os.Stderr, "server: %v\n", err)
 		os.Exit(1)
@@ -317,8 +316,11 @@ func runGenerate(args []string) {
 	_ = fs.String("widget-layout", "", "none|top|bottom|custom")
 	_ = fs.Float64("margin", 0, "side margin px")
 	_ = fs.Float64("margin-top", 0, "top margin px")
-	_ = fs.Float64("shape-scale", 0, "50–150")
-	_ = fs.Float64("stats-scale", 0, "50–150")
+	_ = fs.Float64("dot-gap", 0, "gap between dots px")
+	_ = fs.Float64("dot-size", 0, "mark size px (0 = auto)")
+	_ = fs.Float64("title-size", 0, "title font size px")
+	_ = fs.Float64("footer-size", 0, "footer font size px")
+	_ = fs.Float64("stats-scale", 0, "50–150 legacy")
 
 	// CLI-only
 	output := fs.String("output", "", "write PNG to path")
