@@ -52,6 +52,12 @@ button.primary {
   min-width: 11.5rem;
 }
 button.primary:hover { filter: brightness(1.06); background: var(--accent); }
+button.copied {
+  background: #2a9d6a;
+  border-color: transparent;
+  color: #fff;
+  filter: none;
+}
 button.primary.copied {
   background: #2a9d6a;
   filter: none;
@@ -66,6 +72,11 @@ label.field-label,
   letter-spacing: 0.06em;
   text-transform: uppercase;
   font-weight: 500;
+}
+.field.plain-case > label {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-size: 0.8rem;
 }
 
 input[type="text"],
@@ -204,10 +215,10 @@ input[type="range"] {
 }
 .seg.seg-tight button { padding: 0.4rem 0.7rem; }
 
-.seg-screen {
-  justify-content: center;
+.btn-reset {
   width: 100%;
-  margin: 0;
+  margin-top: 0.25rem;
+  border-radius: var(--radius-sm);
 }
 
 /* Checkboxes */
@@ -425,6 +436,49 @@ input[type="range"] {
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 .toast.show { opacity: 1; }
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+}
+.modal[hidden] { display: none; }
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+}
+.modal-dialog {
+  position: relative;
+  width: min(100%, 22rem);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.35rem 1.15rem;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+}
+.modal-dialog h2 {
+  margin: 0 0 0.55rem;
+  font-family: var(--display);
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+.modal-dialog p {
+  margin: 0 0 1.15rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.modal-actions {
+  display: flex;
+  gap: 0.55rem;
+  justify-content: flex-end;
+}
+.modal-actions button { min-width: 5.5rem; }
 
 .pwa-body {
   background: #000;

@@ -45,7 +45,6 @@ func baseCfg() model.Config {
 	cfg.Height = 400
 	cfg.StartDate = "2026-01-01"
 	cfg.EndDate = "2026-06-01"
-	cfg.GoalTitle = "E2E Goal"
 	cfg.Habits = []model.Habit{
 		{ID: "h1", Name: "Move", Icon: "dumbbell", Completions: map[string]bool{"2026-10-14": true}},
 		{ID: "h2", Name: "Read", Icon: "book-open", Completions: map[string]bool{}},
@@ -61,7 +60,6 @@ func queryFromCfg(cfg model.Config) string {
 	q.Set("year", strconv.Itoa(cfg.Year))
 	q.Set("start_date", cfg.StartDate)
 	q.Set("end_date", cfg.EndDate)
-	q.Set("goal", cfg.GoalTitle)
 	q.Set("title", cfg.CustomTitle)
 	q.Set("fg", cfg.Fg)
 	q.Set("bg", cfg.Bg)
@@ -349,13 +347,6 @@ func TestE2E_DesktopPrintUnits(t *testing.T) {
 	if strings.Contains(plist, "--data-dir") {
 		t.Fatal("launchd should not use --data-dir")
 	}
-	sched, err := desktop.PrintLaunchdSchedule()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(sched, "generate") {
-		t.Fatal("schedule missing generate")
-	}
 	unit, err := desktop.PrintSystemd(":9090")
 	if err != nil {
 		t.Fatal(err)
@@ -365,13 +356,6 @@ func TestE2E_DesktopPrintUnits(t *testing.T) {
 	}
 	if strings.Contains(unit, "--data-dir") {
 		t.Fatal("systemd should not use --data-dir")
-	}
-	svc, timer, err := desktop.PrintSystemdTimer()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(svc, "generate") || !strings.Contains(timer, "OnCalendar") {
-		t.Fatal("timer units incomplete")
 	}
 }
 
@@ -692,6 +676,14 @@ func TestE2E_CLIGenerate(t *testing.T) {
 		"--lifespan", "80",
 		"--fg", "#FFFFFF",
 		"--bg", "#000000",
+		"--bg-type", "solid",
+		"--fill-focus", "future",
+		"--shape", "rounded",
+		"--week-start", "sunday",
+		"--highlight-color", "#FF6B4A",
+		"--grid-opacity", "90",
+		"--show-title",
+		"--footer-mode", "numbers",
 		"--width", "160",
 		"--height", "320",
 		"--output", outPNG,
@@ -746,8 +738,6 @@ func TestE2E_CLIServicePrint(t *testing.T) {
 	if _, err := cmd.CombinedOutput(); err != nil {
 		t.Logf("service status: %v", err)
 	}
-	cmd = exec.Command(bin, "schedule", "status")
-	_, _ = cmd.CombinedOutput()
 }
 
 func TestE2E_CLIHelp(t *testing.T) {
@@ -757,13 +747,34 @@ func TestE2E_CLIHelp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, s := range []string{"serve", "generate", "service", "schedule", "URL"} {
+	for _, s := range []string{"serve", "generate", "service", "URL", "help <command>"} {
 		if !bytes.Contains(out, []byte(s)) {
 			t.Fatalf("help missing %s", s)
 		}
 	}
 	if bytes.Contains(out, []byte("config show")) {
 		t.Fatal("help should not advertise config persistence")
+	}
+	if bytes.Contains(out, []byte("schedule")) {
+		t.Fatal("help should not mention removed schedule command")
+	}
+
+	topics := map[string][]string{
+		"serve":    {"--addr", "wallpaper.png", "Studio"},
+		"generate": {"--fill-focus", "--bg-type", "--bg-rotate", "--set-wallpaper", "--output"},
+		"service":  {"install", "print-launchd", "print-systemd", "launchd"},
+	}
+	for topic, needles := range topics {
+		cmd = exec.Command(bin, "help", topic)
+		out, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("help %s: %v\n%s", topic, err, out)
+		}
+		for _, s := range needles {
+			if !bytes.Contains(out, []byte(s)) {
+				t.Fatalf("help %s missing %q\n%s", topic, s, out)
+			}
+		}
 	}
 }
 

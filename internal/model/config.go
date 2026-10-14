@@ -161,7 +161,6 @@ type Config struct {
 	Year       int        `json:"year,omitempty"`
 	StartDate   string      `json:"startDate,omitempty"`
 	EndDate     string      `json:"endDate,omitempty"`
-	GoalTitle   string      `json:"goalTitle,omitempty"`
 	CustomTitle string      `json:"customTitle,omitempty"`
 	Orientation Orientation `json:"orientation,omitempty"`
 
@@ -187,12 +186,13 @@ type Config struct {
 	ShowBoth         bool       `json:"showBoth"` // shape + number
 
 	// Background (URL string only — never image bytes)
-	BgType     BgType  `json:"bgType"`
-	BgURL      string  `json:"bgUrl,omitempty"`
-	BgBlur     float64 `json:"bgBlur"`     // 0–20
-	BgDim      float64 `json:"bgDim"`      // 0–80 percent
-	BgFocalX   float64 `json:"bgFocalX"`   // 0–100
-	BgFocalY   float64 `json:"bgFocalY"`   // 0–100
+	BgType      BgType  `json:"bgType"`
+	BgURL       string  `json:"bgUrl,omitempty"`
+	BgRotate    int     `json:"bgRotate"` // 0|90|180|270 clockwise degrees
+	BgBlur      float64 `json:"bgBlur"`   // 0–20
+	BgDim       float64 `json:"bgDim"`    // 0–80 percent
+	BgFocalX    float64 `json:"bgFocalX"` // 0–100
+	BgFocalY    float64 `json:"bgFocalY"` // 0–100
 	GridOpacity float64 `json:"gridOpacity"` // 0–100
 
 	// Card overlay
@@ -212,6 +212,7 @@ type Config struct {
 	ShowTitle    bool       `json:"showTitle"` // calendar title (year, custom title, etc.)
 	ShowBranding bool       `json:"showBranding"`
 	ShowProgress bool       `json:"showProgress"`
+	MuteText     bool       `json:"muteText"` // muted color for footer + axis labels
 	FooterMode   FooterMode `json:"footerMode"`
 
 	// Layout / device
@@ -259,7 +260,6 @@ func DefaultConfig() Config {
 		Year:         now.Year(),
 		StartDate:    now.Format("2006-01-02"),
 		EndDate:      now.AddDate(0, 3, 0).Format("2006-01-02"),
-		GoalTitle:      "YOUR GOAL",
 		Fg:             "#FFFFFF",
 		Bg:             "#000000",
 		DotShape:       ShapeCircle,
@@ -268,6 +268,7 @@ func DefaultConfig() Config {
 		HighlightToday: true,
 		HighlightColor: "#FF6B4A", // matches studio --accent
 		BgType:         BgMatch,
+		BgRotate:       0,
 		BgBlur:         0,
 		BgDim:          0,
 		BgFocalX:       50,
@@ -284,6 +285,7 @@ func DefaultConfig() Config {
 		ShowTitle:      true,
 		ShowBranding:   false,
 		ShowProgress:   true,
+		MuteText:       false,
 		FooterMode:     FooterNumbers,
 		DeviceID:     "iphone-16-pro",
 		Width:        1206,

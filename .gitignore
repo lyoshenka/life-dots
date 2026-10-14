@@ -1,4 +1,4 @@
-/life-dots
+/dist/
 *.png
 .DS_Store
 .data/

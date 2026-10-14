@@ -88,8 +88,12 @@ func RenderSVG(cfg model.Config, now time.Time) (string, error) {
 	}
 	footer := buildFooter(cfg, grid, now)
 	if footer != "" {
+		footerFill := colors.Text
+		if cfg.MuteText {
+			footerFill = colors.TextMuted
+		}
 		fmt.Fprintf(&b, `<text x="%d" y="%.1f" text-anchor="middle" fill="%s" font-family="system-ui,sans-serif" font-size="%.1f">%s</text>`,
-			m.Width/2, m.FooterY, colors.TextMuted, m.FootSize, xmlEscape(strings.ReplaceAll(footer, "\n", " · ")))
+			m.Width/2, m.FooterY, footerFill, m.FootSize, xmlEscape(strings.ReplaceAll(footer, "\n", " · ")))
 	}
 	b.WriteString(`</svg>`)
 	return b.String(), nil

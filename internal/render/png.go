@@ -113,9 +113,14 @@ func RenderPNG(cfg model.Config, photo image.Image, now time.Time) ([]byte, erro
 		}
 	}
 
+	chromeC := textC
+	if cfg.MuteText {
+		chromeC = muted
+	}
+
 	// Axis labels
 	if grid.Axes != nil && cfg.ShowAxes {
-		drawAxes(bg, grid, m, muted)
+		drawAxes(bg, grid, m, chromeC)
 	}
 
 	// Title
@@ -123,10 +128,10 @@ func RenderPNG(cfg model.Config, photo image.Image, now time.Time) ([]byte, erro
 		drawText(bg, m.Width/2, int(m.TitleY+m.TitleSize), grid.Title, textC, true)
 	}
 
-	// Footer stats / quote
+	// Footer stats
 	footer := buildFooter(cfg, grid, now)
 	if footer != "" {
-		drawText(bg, m.Width/2, int(m.FooterY), footer, muted, true)
+		drawText(bg, m.Width/2, int(m.FooterY), footer, chromeC, true)
 		// Dual-tone: if "left · right", color left with accent
 		if strings.Contains(footer, " · ") && cfg.ShowProgress {
 			parts := strings.SplitN(footer, " · ", 2)

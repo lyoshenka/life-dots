@@ -6,7 +6,6 @@
     year: new Date().getFullYear(),
     startDate: new Date().toISOString().slice(0, 10),
     endDate: new Date(Date.now() + 90 * 864e5).toISOString().slice(0, 10),
-    goalTitle: "",
     customTitle: "",
     fg: "#ffffff",
     bg: "#000000",
@@ -21,6 +20,7 @@
     showBoth: false,
     bgType: "match",
     bgUrl: "",
+    bgRotate: 0,
     bgBlur: 0,
     bgDim: 30,
     bgFocalX: 50,
@@ -37,11 +37,11 @@
     showLabels: false,
     showBranding: false,
     showProgress: true,
+    muteText: false,
     footerMode: "numbers",
     deviceId: "iphone-16-pro",
     width: 1206,
     height: 2622,
-    screen: "lock",
     widgetLayout: "none",
     margin: 48,
     marginTop: 48,
@@ -98,7 +98,6 @@
       year: new Date().getFullYear(),
       startDate: cfg.startDate,
       endDate: cfg.endDate,
-      goalTitle: cfg.goalTitle,
       customTitle: cfg.customTitle,
       fg: cfg.fg,
       bg: cfg.bg,
@@ -114,6 +113,7 @@
       showBoth: cfg.showBoth,
       bgType: cfg.bgType,
       bgUrl: cfg.bgUrl,
+      bgRotate: Number(cfg.bgRotate) || 0,
       bgBlur: cfg.bgBlur,
       bgDim: cfg.bgDim,
       bgFocalX: cfg.bgFocalX,
@@ -130,11 +130,11 @@
       showLabels: cfg.showLabels,
       showBranding: cfg.showBranding,
       showProgress: cfg.showProgress,
+      muteText: !!cfg.muteText,
       footerMode: cfg.footerMode,
       deviceId: cfg.deviceId,
       width: cfg.width,
       height: cfg.height,
-      screen: cfg.screen,
       widgetLayout: cfg.widgetLayout,
       margin: cfg.margin,
       marginTop: cfg.marginTop,
@@ -153,7 +153,6 @@
       year: "year",
       startDate: "startDate",
       endDate: "endDate",
-      goalTitle: "goalTitle",
       customTitle: "customTitle",
       fg: "fg",
       bg: "bg",
@@ -166,6 +165,7 @@
       highlightToday: "highlightToday",
       bgType: "bgType",
       bgUrl: "bgUrl",
+      bgRotate: "bgRotate",
       bgBlur: "bgBlur",
       bgDim: "bgDim",
       bgFocalX: "bgFocalX",
@@ -180,11 +180,11 @@
       showLabels: "showLabels",
       showBranding: "showBranding",
       showProgress: "showProgress",
+      muteText: "muteText",
       footerMode: "footerMode",
       deviceId: "deviceId",
       width: "width",
       height: "height",
-      screen: "screen",
       widgetLayout: "widgetLayout",
       margin: "margin",
       marginTop: "marginTop",
@@ -208,6 +208,8 @@
     if (state.bgType === "preset") state.bgType = "match";
     if (state.cardStyle === "glass") state.cardStyle = "flat";
     if (state.fillFocus !== "past" && state.fillFocus !== "future") state.fillFocus = "past";
+    const rot = Number(state.bgRotate);
+    state.bgRotate = [0, 90, 180, 270].includes(rot) ? rot : 0;
   }
 
   function loadSavedConfig() {
@@ -231,7 +233,6 @@
     set("lifespan", state.lifespan);
     set("startDate", state.startDate);
     set("endDate", state.endDate);
-    set("goalTitle", state.goalTitle);
     set("customTitle", state.customTitle);
     set("bgUrl", state.bgUrl);
     set("bgBlur", state.bgBlur);
@@ -246,20 +247,21 @@
     set("shapeScale", state.shapeScale);
     set("showFooter", state.footerMode !== "none");
     set("showCard", state.showCard);
+    set("weekStartsMonday", state.weekStart !== "sunday");
     set("showAxes", state.showAxes);
     set("showTitle", state.showTitle);
+    set("muteText", state.muteText);
     const device = $("#device");
     if (device && state.deviceId) device.value = state.deviceId;
     document.querySelectorAll("[data-seg]").forEach((btn) => {
       const key = btn.dataset.seg;
       const map = {
         mode: "mode",
-        screen: "screen",
         shape: "dotShape",
         grouping: "grouping",
-        weekStart: "weekStart",
         bgType: "bgType",
         fillFocus: "fillFocus",
+        bgRotate: "bgRotate",
       };
       const stateKey = map[key];
       if (!stateKey) return;
@@ -306,7 +308,6 @@
       case "goal":
         set("start_date", cfg.startDate);
         set("end_date", cfg.endDate);
-        set("goal", cfg.goalTitle);
         set("week_start", cfg.weekStart);
         break;
       case "habits":
@@ -321,6 +322,7 @@
     set("title", cfg.customTitle);
     p.set("show_title", boolParam(cfg.showTitle));
     set("footer_mode", cfg.footerMode);
+    p.set("mute_text", boolParam(cfg.muteText));
 
     if (["life", "year", "year-months", "monthly", "weekly", "habits"].includes(mode)) {
       p.set("show_axes", boolParam(cfg.showAxes));
@@ -338,6 +340,7 @@
       set("bg", cfg.bg);
     } else if (cfg.bgType === "url") {
       set("bg_url", cfg.bgUrl);
+      set("bg_rotate", cfg.bgRotate || 0);
       set("bg_blur", cfg.bgBlur);
       set("bg_dim", cfg.bgDim);
       set("bg_focal_x", cfg.bgFocalX);
@@ -354,7 +357,7 @@
     set("device", cfg.deviceId);
     set("width", cfg.width);
     set("height", cfg.height);
-    set("screen", cfg.screen);
+    set("screen", "lock");
     set("margin", cfg.margin);
     set("margin_top", cfg.marginTop);
     set("shape_scale", cfg.shapeScale);
@@ -401,6 +404,8 @@
     if (bgColorField) bgColorField.hidden = state.bgType !== "solid";
     const cardFields = document.getElementById("cardFields");
     if (cardFields) cardFields.hidden = !state.showCard;
+    const customTitleField = document.getElementById("customTitleField");
+    if (customTitleField) customTitleField.hidden = !state.showTitle;
   }
 
   const lockDate = document.getElementById("lockDate");
@@ -430,19 +435,24 @@
   }
 
   bindSeg("mode", "mode");
-  bindSeg("screen", "screen");
   bindSeg("shape", "dotShape");
   bindSeg("grouping", "grouping");
-  bindSeg("weekStart", "weekStart");
   bindSeg("bgType", "bgType");
   bindSeg("fillFocus", "fillFocus");
+  document.querySelectorAll('[data-seg="bgRotate"]').forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll('[data-seg="bgRotate"]').forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      state.bgRotate = Number(btn.dataset.value) || 0;
+      refreshPreview();
+    });
+  });
 
   const fields = [
     ["birthday", "birthday"],
     ["lifespan", "lifespan", Number],
     ["startDate", "startDate"],
     ["endDate", "endDate"],
-    ["goalTitle", "goalTitle"],
     ["customTitle", "customTitle"],
     ["bgUrl", "bgUrl"],
     ["bgBlur", "bgBlur", Number],
@@ -488,6 +498,10 @@
     state.showCard = e.target.checked;
     refreshPreview();
   });
+  $("#weekStartsMonday")?.addEventListener("change", (e) => {
+    state.weekStart = e.target.checked ? "monday" : "sunday";
+    refreshPreview();
+  });
   $("#showAxes")?.addEventListener("change", (e) => {
     state.showAxes = e.target.checked;
     state.showLabels = e.target.checked;
@@ -501,21 +515,24 @@
     state.footerMode = e.target.checked ? "numbers" : "none";
     refreshPreview();
   });
-  $("#btnSave")?.addEventListener("click", async () => {
-    const btn = $("#btnSave");
+  $("#muteText")?.addEventListener("change", (e) => {
+    state.muteText = e.target.checked;
+    refreshPreview();
+  });
+  $("#btnCopy")?.addEventListener("click", async () => {
+    const btn = $("#btnCopy");
     const label = btn?.dataset.label || btn?.textContent || "Copy wallpaper URL";
     if (btn && !btn.dataset.label) btn.dataset.label = label;
-    const abs = location.origin + wallpaperURL();
     let ok = false;
     try {
-      await navigator.clipboard.writeText(abs);
+      await navigator.clipboard.writeText(urlBox.textContent);
       ok = true;
     } catch {
       /* clipboard unavailable */
     }
     if (!btn) return;
     btn.textContent = ok ? "Copied!" : "Copy failed";
-    btn.classList.add("copied");
+    btn.classList.toggle("copied", ok);
     clearTimeout(btn._copyTimer);
     btn._copyTimer = setTimeout(() => {
       btn.textContent = btn.dataset.label;
@@ -523,18 +540,20 @@
     }, 1600);
   });
 
-  $("#btnCopy")?.addEventListener("click", async () => {
-    await navigator.clipboard.writeText(urlBox.textContent);
-    showToast("URL copied");
-  });
+  const resetModal = document.getElementById("resetModal");
 
-  $("#btnDesktop")?.addEventListener("click", async () => {
-    const res = await fetch("/api/desktop/apply?" + studioQuery(), { method: "POST" });
-    if (res.ok) showToast("Desktop wallpaper set");
-    else showToast("Desktop apply failed");
-  });
+  function openResetModal() {
+    if (!resetModal) return;
+    resetModal.hidden = false;
+    document.getElementById("btnResetConfirm")?.focus();
+  }
 
-  $("#btnReset")?.addEventListener("click", () => {
+  function closeResetModal() {
+    if (!resetModal) return;
+    resetModal.hidden = true;
+  }
+
+  function applyResetDefaults() {
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {
@@ -549,6 +568,20 @@
     syncForm();
     refreshPreview();
     showToast("Reset to defaults");
+  }
+
+  $("#btnReset")?.addEventListener("click", openResetModal);
+  $("#btnResetConfirm")?.addEventListener("click", () => {
+    closeResetModal();
+    applyResetDefaults();
+  });
+  resetModal?.querySelectorAll("[data-close-reset]").forEach((el) => {
+    el.addEventListener("click", closeResetModal);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && resetModal && !resetModal.hidden) {
+      closeResetModal();
+    }
   });
 
   const screen = $(".phone-screen");

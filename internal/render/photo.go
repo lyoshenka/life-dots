@@ -12,6 +12,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/grin/life-dots/internal/model"
@@ -20,10 +21,32 @@ import (
 // MaxPhotoBytes limits a single request-scoped photo decode.
 const MaxPhotoBytes = 25 << 20 // 25 MiB
 
-// FetchPhotoURL downloads a photo for this request only (no cache retention).
+// PhotoURLCacheCap is the max number of decoded background photos kept in memory.
+const PhotoURLCacheCap = 20
+
+// PhotoURLCacheTTL is how long a cached photo stays valid after fetch.
+const PhotoURLCacheTTL = 14 * 24 * time.Hour
+
+type photoCacheEntry struct {
+	img      image.Image
+	storedAt time.Time
+}
+
+var (
+	photoCacheMu    sync.Mutex
+	photoCache      = map[string]photoCacheEntry{}
+	photoCacheOrder []string // LRU: oldest → newest
+	photoCacheNow   = time.Now
+)
+
+// FetchPhotoURL downloads and decodes a photo, caching up to PhotoURLCacheCap URLs
+// in memory (LRU). Entries expire after PhotoURLCacheTTL.
 func FetchPhotoURL(url string) (image.Image, error) {
 	if url == "" {
 		return nil, fmt.Errorf("empty bg url")
+	}
+	if img, ok := photoCacheGet(url); ok {
+		return img, nil
 	}
 	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Get(url)
@@ -43,7 +66,109 @@ func FetchPhotoURL(url string) (image.Image, error) {
 		return nil, fmt.Errorf("photo too large")
 	}
 	img, _, err := image.Decode(bytes.NewReader(data))
-	return img, err
+	if err != nil {
+		return nil, err
+	}
+	photoCachePut(url, img)
+	return img, nil
+}
+
+func photoCacheGet(url string) (image.Image, bool) {
+	photoCacheMu.Lock()
+	defer photoCacheMu.Unlock()
+	photoCacheEvictExpiredLocked()
+	e, ok := photoCache[url]
+	if !ok {
+		return nil, false
+	}
+	if photoCacheNow().Sub(e.storedAt) >= PhotoURLCacheTTL {
+		photoCacheDeleteLocked(url)
+		return nil, false
+	}
+	// Move to most-recently used.
+	for i, u := range photoCacheOrder {
+		if u == url {
+			photoCacheOrder = append(append(photoCacheOrder[:i], photoCacheOrder[i+1:]...), url)
+			break
+		}
+	}
+	return e.img, true
+}
+
+func photoCachePut(url string, img image.Image) {
+	photoCacheMu.Lock()
+	defer photoCacheMu.Unlock()
+	photoCacheEvictExpiredLocked()
+	now := photoCacheNow()
+	if _, ok := photoCache[url]; ok {
+		photoCache[url] = photoCacheEntry{img: img, storedAt: now}
+		for i, u := range photoCacheOrder {
+			if u == url {
+				photoCacheOrder = append(append(photoCacheOrder[:i], photoCacheOrder[i+1:]...), url)
+				return
+			}
+		}
+		photoCacheOrder = append(photoCacheOrder, url)
+		return
+	}
+	for len(photoCacheOrder) >= PhotoURLCacheCap {
+		evict := photoCacheOrder[0]
+		photoCacheOrder = photoCacheOrder[1:]
+		delete(photoCache, evict)
+	}
+	photoCache[url] = photoCacheEntry{img: img, storedAt: now}
+	photoCacheOrder = append(photoCacheOrder, url)
+}
+
+func photoCacheEvictExpiredLocked() {
+	now := photoCacheNow()
+	kept := photoCacheOrder[:0]
+	for _, u := range photoCacheOrder {
+		e, ok := photoCache[u]
+		if !ok || now.Sub(e.storedAt) >= PhotoURLCacheTTL {
+			delete(photoCache, u)
+			continue
+		}
+		kept = append(kept, u)
+	}
+	photoCacheOrder = kept
+}
+
+func photoCacheDeleteLocked(url string) {
+	delete(photoCache, url)
+	for i, u := range photoCacheOrder {
+		if u == url {
+			photoCacheOrder = append(photoCacheOrder[:i], photoCacheOrder[i+1:]...)
+			return
+		}
+	}
+}
+
+// SetPhotoCacheNow overrides the clock used for cache TTL (tests). Pass nil to restore.
+func SetPhotoCacheNow(fn func() time.Time) {
+	photoCacheMu.Lock()
+	defer photoCacheMu.Unlock()
+	if fn == nil {
+		photoCacheNow = time.Now
+		return
+	}
+	photoCacheNow = fn
+}
+
+// ClearPhotoURLCache drops all cached background photos (tests / memory pressure).
+func ClearPhotoURLCache() {
+	photoCacheMu.Lock()
+	defer photoCacheMu.Unlock()
+	photoCache = map[string]photoCacheEntry{}
+	photoCacheOrder = nil
+}
+
+// PhotoURLCacheLen returns the number of cached URLs (tests).
+func PhotoURLCacheLen() int {
+	photoCacheMu.Lock()
+	defer photoCacheMu.Unlock()
+	photoCacheEvictExpiredLocked()
+	return len(photoCache)
 }
 
 // DecodePhoto reads image bytes from a POST body (request-scoped).
@@ -266,6 +391,7 @@ func PrepareBackground(cfg model.Config, w, h int, photo image.Image) (*image.RG
 	}
 
 	if src != nil {
+		src = RotateImage(src, cfg.BgRotate)
 		cropped := CoverCrop(src, w, h, cfg.BgFocalX, cfg.BgFocalY)
 		if cfg.BgBlur > 0 {
 			cropped = BoxBlur(cropped, int(cfg.BgBlur))
@@ -276,6 +402,55 @@ func PrepareBackground(cfg model.Config, w, h int, photo image.Image) (*image.RG
 		}
 	}
 	return bg, nil
+}
+
+// RotateImage rotates src clockwise by deg (0, 90, 180, or 270).
+func RotateImage(src image.Image, deg int) image.Image {
+	if src == nil {
+		return nil
+	}
+	deg = ((deg % 360) + 360) % 360
+	// Snap to nearest supported quarter-turn.
+	switch {
+	case deg > 315 || deg <= 45:
+		return src
+	case deg <= 135:
+		deg = 90
+	case deg <= 225:
+		deg = 180
+	default:
+		deg = 270
+	}
+	b := src.Bounds()
+	w, h := b.Dx(), b.Dy()
+	switch deg {
+	case 90:
+		out := image.NewRGBA(image.Rect(0, 0, h, w))
+		for y := 0; y < h; y++ {
+			for x := 0; x < w; x++ {
+				out.Set(h-1-y, x, src.At(b.Min.X+x, b.Min.Y+y))
+			}
+		}
+		return out
+	case 180:
+		out := image.NewRGBA(image.Rect(0, 0, w, h))
+		for y := 0; y < h; y++ {
+			for x := 0; x < w; x++ {
+				out.Set(w-1-x, h-1-y, src.At(b.Min.X+x, b.Min.Y+y))
+			}
+		}
+		return out
+	case 270:
+		out := image.NewRGBA(image.Rect(0, 0, h, w))
+		for y := 0; y < h; y++ {
+			for x := 0; x < w; x++ {
+				out.Set(y, w-1-x, src.At(b.Min.X+x, b.Min.Y+y))
+			}
+		}
+		return out
+	default:
+		return src
+	}
 }
 
 func parseHex(s string) color.RGBA {
@@ -307,8 +482,8 @@ func DrawGlassCard(bg *image.RGBA, rect image.Rectangle, cfg model.Config) {
 		return
 	}
 	radius := cfg.CardRadius
-	if radius == 0 {
-		radius = 24
+	if radius < 0 {
+		radius = 0
 	}
 	fill := parseHex(cfg.CardColor)
 	if cfg.CardColor == "" {

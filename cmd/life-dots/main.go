@@ -25,9 +25,11 @@ func main() {
 		runGenerate(os.Args[2:])
 	case "service":
 		runService(os.Args[2:])
-	case "schedule":
-		runSchedule(os.Args[2:])
 	case "help", "-h", "--help":
+		if len(os.Args) >= 3 {
+			printTopicHelp(os.Args[2])
+			return
+		}
 		printHelp()
 	default:
 		// allow `life-dots --addr :8080` as serve
@@ -52,6 +54,21 @@ func splitFlags(args []string) (flags, rest []string) {
 	return flags, rest
 }
 
+func printTopicHelp(topic string) {
+	switch topic {
+	case "serve":
+		printServeHelp()
+	case "generate":
+		printGenerateHelp()
+	case "service":
+		printServiceHelp()
+	default:
+		fmt.Fprintf(os.Stderr, "unknown help topic %q\n\n", topic)
+		printHelp()
+		os.Exit(1)
+	}
+}
+
 func printHelp() {
 	fmt.Print(`life-dots — single-binary life-in-dots wallpaper engine
 
@@ -61,24 +78,158 @@ wallpaper URLs carry flat query params (bookmark or copy that link).
 Usage:
   life-dots serve [--addr :8080]
   life-dots generate [flags]
-  life-dots service install|uninstall|status|print-launchd|print-systemd
-  life-dots schedule install|uninstall|status
+  life-dots service <command> [--addr :8080]
+  life-dots help [serve|generate|service]
 
-Generate flags:
-  --mode life|year|year-months|quarters|monthly|weekly|custom|goal|habits
-  --dob YYYY-MM-DD
-  --lifespan N
-  --fg #RRGGBB
-  --bg #RRGGBB
-  --bg-url URL
-  --width N --height N
-  --output FILE.png
-  --set-wallpaper
+Commands:
+  serve      Run the studio + wallpaper HTTP server (default if no command)
+  generate   Render a PNG locally (and optionally set desktop wallpaper)
+  service    Install/uninstall the always-on HTTP server (launchd / systemd)
+
+Examples:
+  life-dots serve --addr :8080
+  life-dots generate --mode year --fg '#fff' --output wallpaper.png
+  life-dots service install --addr :8080
+
+Run "life-dots help <command>" for full flags and details.
+`)
+}
+
+func printServeHelp() {
+	fmt.Print(`life-dots serve — studio + wallpaper HTTP server
+
+Usage:
+  life-dots serve [--addr :8080]
+  life-dots [--addr :8080]          # same as serve (no subcommand)
+
+Flags:
+  --addr string   Listen address (default ":8080")
+
+Opens a local studio UI and serves wallpaper images:
+  GET  /                 Studio
+  GET  /wallpaper.png    PNG with flat query-param config
+  GET  /wallpaper.svg    SVG variant
+  POST /wallpaper.png    Optional photo body + query config
+  GET  /api/meta         Devices + habit icons
+  GET  /api/qr           QR code for a wallpaper URL
+
+Studio settings are stored in the browser only. Wallpaper links encode
+settings as query params for Shortcuts / bookmarks.
+`)
+}
+
+func printGenerateHelp() {
+	fmt.Print(`life-dots generate — render a wallpaper PNG locally
+
+Usage:
+  life-dots generate [flags]
+
+Flags mirror wallpaper query params (kebab-case). Only flags you pass
+override defaults. Shared with /wallpaper.png via the same ApplyQuery logic.
+
+  Calendar:
+    --mode life|year|year-months|quarters|monthly|weekly|custom|goal|habits
+    --birthday|--dob YYYY-MM-DD
+    --lifespan N
+    --year N
+    --start-date YYYY-MM-DD
+    --end-date|--goal-date YYYY-MM-DD
+    --title string         Custom title
+    --grouping string      Life grouping (none|months|decades|full|…)
+    --week-start monday|sunday
+    --habits JSON          Habit array JSON
+
+  Appearance:
+    --fg #RRGGBB
+    --bg #RRGGBB
+    --highlight-color #RRGGBB
+    --fill-focus past|future
+    --shape circle|rounded|square
+    --shape-style filled|outlined
+    --no-gap
+    --highlight-today
+    --show-numbers
+    --show-both
+    --grid-opacity 0–100
+
+  Background:
+    --bg-type match|solid|url
+    --bg-url URL
+    --bg-rotate 0|90|180|270
+    --bg-blur N
+    --bg-dim 0–80
+    --bg-focal-x 0–100
+    --bg-focal-y 0–100
+
+  Card:
+    --show-card
+    --card-style flat
+    --card-opacity 0–100
+    --card-radius N
+    --card-pad-h N
+    --card-pad-v N
+
+  Chrome:
+    --show-axes
+    --show-title
+    --show-labels
+    --show-branding
+    --show-progress
+    --mute-text
+    --footer-mode none|numbers
+
+  Layout:
+    --device id             Device preset (sets width/height)
+    --width N --height N
+    --screen lock|home
+    --widget-layout none|top|bottom|custom
+    --margin N --margin-top N
+    --shape-scale 50–150
+    --stats-scale 50–150
+
+  Output (CLI-only):
+    --output FILE.png      Write PNG to path
+    --set-wallpaper        Apply as desktop wallpaper
+                           (if neither is set, tries desktop then wallpaper.png)
+
+Examples:
+  life-dots generate --mode life --dob 1995-01-01 --output out.png
+  life-dots generate --mode year --fill-focus future --set-wallpaper
+`)
+}
+
+func printServiceHelp() {
+	fmt.Print(`life-dots service — always-on HTTP server as a user daemon
+
+Keeps "life-dots serve" running so studio + wallpaper URLs stay available
+(e.g. for iPhone Shortcuts). macOS uses launchd; Linux uses systemd --user.
+
+Usage:
+  life-dots service install [--addr :8080]
+  life-dots service uninstall
+  life-dots service status
+  life-dots service print-launchd [--addr :8080]
+  life-dots service print-systemd [--addr :8080]
+
+Commands:
+  install         Install and start the user service
+  uninstall       Stop and remove the user service
+  status          Show whether the service is loaded/active
+  print-launchd   Print the macOS LaunchAgent plist (no install)
+  print-systemd   Print the Linux user systemd unit (no install)
+
+Flags:
+  --addr string   Listen address for serve (default ":8080")
+
+Examples:
+  life-dots service install --addr :8080
+  life-dots service status
 `)
 }
 
 func runServe(args []string) {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
+	fs.Usage = printServeHelp
 	addr := fs.String("addr", ":8080", "listen address")
 	// Accept but ignore legacy --data-dir so old unit files still start.
 	_ = fs.String("data-dir", "", "ignored (config is URL-only)")
@@ -103,57 +254,95 @@ func normalizeAddr(addr string) string {
 
 func runGenerate(args []string) {
 	fs := flag.NewFlagSet("generate", flag.ExitOnError)
-	mode := fs.String("mode", "", "calendar mode")
-	dob := fs.String("dob", "", "birthday YYYY-MM-DD")
-	lifespan := fs.Int("lifespan", 0, "lifespan years")
-	fg := fs.String("fg", "", "foreground color #RRGGBB")
-	bg := fs.String("bg", "", "background color #RRGGBB")
-	bgURL := fs.String("bg-url", "", "background photo URL (fetched per request, not stored)")
-	startDate := fs.String("start-date", "", "goal/custom start YYYY-MM-DD")
-	endDate := fs.String("end-date", "", "goal/custom end YYYY-MM-DD")
-	width := fs.Int("width", 0, "width px")
-	height := fs.Int("height", 0, "height px")
+	fs.Usage = printGenerateHelp
+
+	// Calendar
+	_ = fs.String("mode", "", "calendar mode")
+	_ = fs.String("birthday", "", "birthday YYYY-MM-DD")
+	_ = fs.String("dob", "", "alias for --birthday")
+	_ = fs.Int("lifespan", 0, "lifespan years")
+	_ = fs.Int("year", 0, "calendar year")
+	_ = fs.String("start-date", "", "goal/custom start YYYY-MM-DD")
+	_ = fs.String("end-date", "", "goal/custom end YYYY-MM-DD")
+	_ = fs.String("goal-date", "", "alias for --end-date")
+	_ = fs.String("title", "", "custom title")
+	_ = fs.String("grouping", "", "life grouping")
+	_ = fs.String("week-start", "", "monday|sunday")
+	_ = fs.String("habits", "", "habits JSON array")
+
+	// Appearance
+	_ = fs.String("fg", "", "foreground color #RRGGBB")
+	_ = fs.String("bg", "", "background color #RRGGBB")
+	_ = fs.String("highlight-color", "", "today highlight color")
+	_ = fs.String("fill-focus", "", "past|future")
+	_ = fs.String("shape", "", "circle|rounded|square")
+	_ = fs.String("shape-style", "", "filled|outlined")
+	_ = fs.Bool("no-gap", false, "square with no gap")
+	_ = fs.Bool("highlight-today", false, "ring around today")
+	_ = fs.Bool("show-numbers", false, "show day numbers")
+	_ = fs.Bool("show-both", false, "shape + number")
+	_ = fs.Float64("grid-opacity", 0, "0–100")
+
+	// Background
+	_ = fs.String("bg-type", "", "match|solid|url")
+	_ = fs.String("bg-url", "", "background photo URL")
+	_ = fs.Int("bg-rotate", 0, "photo rotation 0|90|180|270")
+	_ = fs.Float64("bg-blur", 0, "photo blur px")
+	_ = fs.Float64("bg-dim", 0, "photo dim percent")
+	_ = fs.Float64("bg-focal-x", 0, "focal X 0–100")
+	_ = fs.Float64("bg-focal-y", 0, "focal Y 0–100")
+
+	// Card
+	_ = fs.Bool("show-card", false, "card behind dots")
+	_ = fs.String("card-style", "", "flat")
+	_ = fs.Float64("card-opacity", 0, "0–100")
+	_ = fs.Float64("card-radius", 0, "corner radius")
+	_ = fs.Float64("card-pad-h", 0, "horizontal pad")
+	_ = fs.Float64("card-pad-v", 0, "vertical pad")
+
+	// Chrome
+	_ = fs.Bool("show-axes", false, "axis labels")
+	_ = fs.Bool("show-title", false, "show title")
+	_ = fs.Bool("show-labels", false, "show labels")
+	_ = fs.Bool("show-branding", false, "show branding")
+	_ = fs.Bool("show-progress", false, "show progress in footer")
+	_ = fs.Bool("mute-text", false, "muted color for footer and axis labels")
+	_ = fs.String("footer-mode", "", "none|numbers")
+
+	// Layout
+	_ = fs.String("device", "", "device preset id")
+	_ = fs.Int("width", 0, "width px")
+	_ = fs.Int("height", 0, "height px")
+	_ = fs.String("screen", "", "lock|home")
+	_ = fs.String("widget-layout", "", "none|top|bottom|custom")
+	_ = fs.Float64("margin", 0, "side margin px")
+	_ = fs.Float64("margin-top", 0, "top margin px")
+	_ = fs.Float64("shape-scale", 0, "50–150")
+	_ = fs.Float64("stats-scale", 0, "50–150")
+
+	// CLI-only
 	output := fs.String("output", "", "write PNG to path")
 	setWP := fs.Bool("set-wallpaper", false, "apply to local desktop")
 	_ = fs.String("data-dir", "", "ignored (config is URL-only)")
+
 	flags, _ := splitFlags(args)
 	_ = fs.Parse(flags)
 
 	cfg := model.DefaultConfig()
-	if *mode != "" {
-		cfg.Mode = model.Mode(*mode)
-	}
-	if *dob != "" {
-		cfg.Birthday = *dob
-	}
-	if *lifespan > 0 {
-		cfg.Lifespan = *lifespan
-	}
-	if *fg != "" {
-		cfg.Fg = *fg
-	}
-	if *bg != "" {
-		cfg.Bg = *bg
-	}
-	if *bgURL != "" {
-		cfg.BgType = model.BgURL
-		cfg.BgURL = *bgURL
-	}
-	if *startDate != "" {
-		cfg.StartDate = *startDate
-	}
-	if *endDate != "" {
-		cfg.EndDate = *endDate
-	}
+	q := map[string][]string{}
+	fs.Visit(func(f *flag.Flag) {
+		switch f.Name {
+		case "output", "set-wallpaper", "data-dir":
+			return
+		}
+		key := strings.ReplaceAll(f.Name, "-", "_")
+		q[key] = []string{f.Value.String()}
+	})
+	model.ApplyQuery(&cfg, q)
+
 	if (cfg.Mode == model.ModeCustom || cfg.Mode == model.ModeGoal) && cfg.StartDate == "" {
 		cfg.StartDate = time.Now().Format("2006-01-02")
 		cfg.EndDate = time.Now().AddDate(0, 3, 0).Format("2006-01-02")
-	}
-	if *width > 0 {
-		cfg.Width = *width
-	}
-	if *height > 0 {
-		cfg.Height = *height
 	}
 
 	png, err := render.RenderPNG(cfg, nil, time.Now())
@@ -190,15 +379,18 @@ func runGenerate(args []string) {
 
 func runService(args []string) {
 	fs := flag.NewFlagSet("service", flag.ExitOnError)
+	fs.Usage = printServiceHelp
 	addr := fs.String("addr", ":8080", "listen address")
 	_ = fs.String("data-dir", "", "ignored (legacy)")
 	flags, rest := splitFlags(args)
 	_ = fs.Parse(flags)
 	if len(rest) == 0 {
-		fmt.Println(desktop.ServiceStatus())
+		printServiceHelp()
 		return
 	}
 	switch rest[0] {
+	case "help", "-h", "--help":
+		printServiceHelp()
 	case "install":
 		if err := desktop.InstallService(*addr); err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
@@ -228,37 +420,9 @@ func runService(args []string) {
 		}
 		fmt.Print(s)
 	default:
-		fmt.Fprintln(os.Stderr, "usage: life-dots service install|uninstall|status|print-launchd|print-systemd")
+		fmt.Fprintf(os.Stderr, "unknown service command %q\n\n", rest[0])
+		printServiceHelp()
 		os.Exit(1)
 	}
 }
 
-func runSchedule(args []string) {
-	fs := flag.NewFlagSet("schedule", flag.ExitOnError)
-	_ = fs.String("data-dir", "", "ignored (legacy)")
-	flags, rest := splitFlags(args)
-	_ = fs.Parse(flags)
-	if len(rest) == 0 {
-		fmt.Println(desktop.ScheduleStatus())
-		return
-	}
-	switch rest[0] {
-	case "install":
-		if err := desktop.InstallSchedule(); err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("schedule installed")
-	case "uninstall":
-		if err := desktop.UninstallSchedule(); err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("schedule uninstalled")
-	case "status":
-		fmt.Println(desktop.ScheduleStatus())
-	default:
-		fmt.Fprintln(os.Stderr, "usage: life-dots schedule install|uninstall|status")
-		os.Exit(1)
-	}
-}

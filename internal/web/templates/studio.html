@@ -15,13 +15,53 @@
       <h1 class="brand">Life Dots</h1>
       <p class="tagline">Your life in dots — on your phone or desktop.</p>
     </div>
-    <div class="header-actions">
-      <button type="button" id="btnReset">Reset</button>
-      <button type="button" class="primary" id="btnSave">Copy wallpaper URL</button>
-    </div>
   </header>
 
   <main class="studio">
+    <section class="stack">
+      <div class="panel">
+        <h2>Device</h2>
+        <div class="field">
+          <select id="device" aria-label="Device">
+            {{range .Devices}}
+            <option value="{{.ID}}" data-w="{{.Width}}" data-h="{{.Height}}" {{if eq .ID "iphone-16-pro"}}selected{{end}}>{{.Group}} — {{.Name}} ({{.Width}}×{{.Height}})</option>
+            {{end}}
+          </select>
+        </div>
+      </div>
+
+      <div class="panel setup">
+        <h2>Phone setup</h2>
+        <ol>
+          <li>Copy the wallpaper URL below, or scan the QR on your phone.</li>
+          <li>Shortcuts → Automation → Time of Day (e.g. 6:00 AM, Daily, Run Immediately).</li>
+          <li>Get Contents of URL → paste the wallpaper URL (or POST a Photos album image).</li>
+          <li>Set Wallpaper → Lock Screen → turn off Crop to Subject &amp; Show Preview.</li>
+        </ol>
+        <div class="url-box" id="wallpaperUrl">{{.Host}}/wallpaper.png</div>
+        <div class="actions-row">
+          <button type="button" class="primary" id="btnCopy">Copy wallpaper URL</button>
+        </div>
+        <img class="qr" id="qrImg" alt="QR code" src="/api/qr"/>
+        <p class="setup-note">Also works as a Home Screen web app: <a href="/pwa">Open PWA</a></p>
+      </div>
+    </section>
+
+    <section class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <img id="preview" alt="Wallpaper preview" src="/wallpaper.png"/>
+          <div class="island"></div>
+          <div class="lock-chrome">
+            <div class="lock-date" id="lockDate">Wed Oct 14</div>
+            <div class="lock-time">9:41</div>
+            <div class="lock-actions"><span></span><span></span></div>
+          </div>
+          <div class="loupe" id="loupe"><img id="loupeImg" alt=""/></div>
+        </div>
+      </div>
+    </section>
+
     <section class="stack">
       <div class="panel">
         <h2>Calendar</h2>
@@ -56,7 +96,7 @@
           <p class="hint">This week’s seven days.</p>
         </div>
         <div data-mode-panel="custom" hidden>
-          <div class="field"><label for="goalTitle">Goal title</label><input id="goalTitle" type="text" placeholder="New York City Marathon"/></div>
+          <p class="hint">Dots adapt to goal length: day calendar under ~5 weeks, then weeks, then months. Grid width stays phone-tall and calendar-sensible (e.g. 7 for days, ~4 for weeks, ~3–4 for months).</p>
           <div class="field"><label for="startDate">Start</label><input id="startDate" type="date"/></div>
           <div class="field"><label for="endDate">End / deadline</label><input id="endDate" type="date"/></div>
         </div>
@@ -64,7 +104,6 @@
           <p class="hint">Track up to 4 habits. Log from iPhone Shortcuts via <code>/api/habits/log</code>.</p>
           <button type="button" id="btnLogHabit">Log habit today</button>
         </div>
-        <div class="field"><label for="customTitle">Title</label><input id="customTitle" type="text" placeholder="MY LIFE IN WEEKS"/></div>
 
         <div data-mode-panel="life" hidden>
           <h2 class="sub">Grouping</h2>
@@ -77,65 +116,12 @@
             <button type="button" data-seg="grouping" data-value="fortnight">Fortnight</button>
           </div>
         </div>
-        <div data-mode-panel="life,year-months,monthly,weekly,custom" hidden>
-          <h2 class="sub">Week starts</h2>
-          <div class="seg seg-tight">
-            <button type="button" data-seg="weekStart" data-value="monday" class="active">Monday</button>
-            <button type="button" data-seg="weekStart" data-value="sunday">Sunday</button>
-          </div>
-        </div>
         <label class="check" data-mode-panel="life,year,year-months,monthly,weekly,habits"><input type="checkbox" id="showAxes"/> Show axis labels</label>
         <label class="check"><input type="checkbox" id="showTitle" checked/> Show title</label>
+        <div class="field plain-case" id="customTitleField"><label for="customTitle">Custom Title</label><input id="customTitle" type="text" placeholder="My life in weeks"/></div>
         <label class="check"><input type="checkbox" id="showFooter" checked/> Show footer</label>
-      </div>
-
-      <div class="panel setup">
-        <h2>Phone setup</h2>
-        <ol>
-          <li>Copy the wallpaper URL below, or scan the QR on your phone.</li>
-          <li>Shortcuts → Automation → Time of Day (e.g. 6:00 AM, Daily, Run Immediately).</li>
-          <li>Get Contents of URL → paste the wallpaper URL (or POST a Photos album image).</li>
-          <li>Set Wallpaper → Lock Screen → turn off Crop to Subject &amp; Show Preview.</li>
-        </ol>
-        <div class="url-box" id="wallpaperUrl">{{.Host}}/wallpaper.png</div>
-        <div class="actions-row">
-          <button type="button" id="btnCopy">Copy URL</button>
-          <button type="button" id="btnDesktop">Set desktop wallpaper</button>
-        </div>
-        <img class="qr" id="qrImg" alt="QR code" src="/api/qr"/>
-        <p class="setup-note">Also works as a Home Screen web app: <a href="/pwa">Open PWA</a></p>
-      </div>
-    </section>
-
-    <section class="phone-wrap">
-      <div class="phone">
-        <div class="phone-screen">
-          <img id="preview" alt="Wallpaper preview" src="/wallpaper.png"/>
-          <div class="island"></div>
-          <div class="lock-chrome">
-            <div class="lock-date" id="lockDate">Wed Oct 14</div>
-            <div class="lock-time">9:41</div>
-            <div class="lock-actions"><span></span><span></span></div>
-          </div>
-          <div class="loupe" id="loupe"><img id="loupeImg" alt=""/></div>
-        </div>
-      </div>
-      <div class="seg seg-screen">
-        <button type="button" data-seg="screen" data-value="lock" class="active">Lock Screen</button>
-        <button type="button" data-seg="screen" data-value="home">Home Screen</button>
-      </div>
-    </section>
-
-    <section class="stack">
-      <div class="panel">
-        <h2>Device</h2>
-        <div class="field">
-          <select id="device" aria-label="Device">
-            {{range .Devices}}
-            <option value="{{.ID}}" data-w="{{.Width}}" data-h="{{.Height}}" {{if eq .ID "iphone-16-pro"}}selected{{end}}>{{.Group}} — {{.Name}} ({{.Width}}×{{.Height}})</option>
-            {{end}}
-          </select>
-        </div>
+        <label class="check"><input type="checkbox" id="muteText"/> Mute text</label>
+        <label class="check" data-mode-panel="life,year-months,monthly,weekly,custom" hidden><input type="checkbox" id="weekStartsMonday" checked/> Week starts on Monday</label>
       </div>
 
       <div class="panel">
@@ -170,6 +156,12 @@
         <div class="field" id="bgColorField" hidden><label for="bg">Color</label><input id="bg" type="color" value="#000000"/></div>
         <div id="bgUrlFields" hidden>
           <div class="field"><label for="bgUrl">Photo URL</label><input id="bgUrl" type="url" placeholder="https://…"/></div>
+          <div class="seg seg-tight">
+            <button type="button" data-seg="bgRotate" data-value="0" class="active">0°</button>
+            <button type="button" data-seg="bgRotate" data-value="90">90°</button>
+            <button type="button" data-seg="bgRotate" data-value="180">180°</button>
+            <button type="button" data-seg="bgRotate" data-value="270">270°</button>
+          </div>
           <div class="field"><label for="bgBlur">Blur <span data-val="bgBlur">0</span>px</label><input id="bgBlur" type="range" min="0" max="20" value="0"/></div>
           <div class="field"><label for="bgDim">Dim <span data-val="bgDim">30</span>%</label><input id="bgDim" type="range" min="0" max="80" value="30"/></div>
           <div class="field"><label for="bgFocalX">Focal X <span data-val="bgFocalX">50</span>%</label><input id="bgFocalX" type="range" min="0" max="100" value="50"/></div>
@@ -181,10 +173,25 @@
           <div class="field"><label for="cardRadius">Radius <span data-val="cardRadius">28</span></label><input id="cardRadius" type="range" min="0" max="50" value="28"/></div>
         </div>
       </div>
+
+      <button type="button" id="btnReset" class="btn-reset">Reset to Defaults</button>
     </section>
   </main>
 
   <div class="toast" id="toast"></div>
+
+  <div class="modal" id="resetModal" hidden>
+    <div class="modal-backdrop" data-close-reset></div>
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="resetModalTitle">
+      <h2 id="resetModalTitle">Reset to defaults?</h2>
+      <p>This clears your studio settings and habit completions. Wallpaper URLs you’ve already copied are unchanged.</p>
+      <div class="modal-actions">
+        <button type="button" data-close-reset>Cancel</button>
+        <button type="button" class="primary" id="btnResetConfirm">Reset to Defaults</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/static/studio.js"></script>
 </body>
 </html>

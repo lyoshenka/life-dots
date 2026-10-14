@@ -242,7 +242,7 @@ func buildLife(cfg model.Config, now time.Time) (*Grid, error) {
 
 	title := cfg.CustomTitle
 	if title == "" {
-		title = "MY LIFE IN WEEKS"
+		title = "My life in weeks"
 	}
 
 	g := &Grid{
@@ -638,25 +638,77 @@ func buildWeekly(cfg model.Config, now time.Time) (*Grid, error) {
 	return g, nil
 }
 
-func determineCustomLayout(days int) (unit string, cols int) {
-	if days <= 56 {
-		return "day", 7
+func customGoalTitle(cfg model.Config, fallback string) string {
+	if cfg.CustomTitle != "" {
+		return cfg.CustomTitle
 	}
-	if days <= 365 {
-		return "day", 14
+	return fallback
+}
+
+// bestPortraitCols picks a column count for a tall phone-friendly grid,
+// preferring calendar-meaningful widths and a tidy last row.
+func bestPortraitCols(n int, candidates []int) int {
+	if n < 1 {
+		n = 1
 	}
-	// week unit
-	weeks := int(math.Ceil(float64(days) / 7))
-	switch {
-	case weeks <= 52:
-		return "week", 8
-	case weeks <= 104:
-		return "week", 16
-	case weeks <= 208:
-		return "week", 26
-	default:
-		return "week", 52
+	const targetAspect = 2.0 // rows/cols — lock-screen wallpaper
+	bestC := candidates[0]
+	bestScore := math.MaxFloat64
+	for _, c := range candidates {
+		if c < 1 {
+			continue
+		}
+		// Avoid a single sparse row unless the goal is tiny.
+		if c > n && n > 4 {
+			continue
+		}
+		cols := c
+		if cols > n {
+			cols = n
+		}
+		rows := int(math.Ceil(float64(n) / float64(cols)))
+		if rows < 1 {
+			rows = 1
+		}
+		aspect := float64(rows) / float64(cols)
+		empty := 0
+		if rem := n % cols; rem != 0 {
+			empty = cols - rem
+		}
+		score := math.Abs(aspect-targetAspect) + float64(empty)/float64(cols)*0.7
+		// Heavy penalty for short/wide grids on phones.
+		if aspect < 1.15 && n >= cols*2 {
+			score += (1.15 - aspect) * 4
+		}
+		// Prefer familiar calendar widths when scores are close.
+		switch cols {
+		case 4, 7: // month-of-weeks / weekdays metaphor
+			score -= 0.18
+		case 3, 6: // quarters / half-year
+			score -= 0.1
+		}
+		if score < bestScore {
+			bestScore = score
+			bestC = cols
+		}
 	}
+	if bestC > n {
+		bestC = n
+	}
+	if bestC < 1 {
+		bestC = 1
+	}
+	return bestC
+}
+
+func weekColumns(weeks int) int {
+	// 4 ≈ month of weeks, 7 ≈ week strip — keep portrait (avoid ultra-wide year rows).
+	return bestPortraitCols(weeks, []int{4, 5, 6, 7, 8, 10})
+}
+
+func monthColumns(months int) int {
+	// 3 ≈ quarter, 4 ≈ seasons, 6 ≈ half-year (12-wide is too squat on a phone).
+	return bestPortraitCols(months, []int{3, 4, 6})
 }
 
 func buildCustom(cfg model.Config, now time.Time) (*Grid, error) {
@@ -671,67 +723,95 @@ func buildCustom(cfg model.Config, now time.Time) (*Grid, error) {
 	if end.Before(start) {
 		start, end = end, start
 	}
+	now = truncateDay(now)
 	dayCount := int(end.Sub(start).Hours()/24) + 1
-	unit, cols := determineCustomLayout(dayCount)
-	var total int
-	var cells []Cell
-	current := -1
-	filled := 0
-
-	if unit == "day" {
-		total = dayCount
-		rows := int(math.Ceil(float64(total) / float64(cols)))
-		cells = make([]Cell, cols*rows)
-		for i := range cells {
-			cells[i].State = CellEmpty
-			cells[i].Opacity = 1
-		}
-		for i := 0; i < total; i++ {
-			d := start.AddDate(0, 0, i)
-			st := CellFuture
-			if d.Before(now) {
-				st = CellPast
-				filled++
-			} else if d.Equal(now) {
-				st = CellCurrent
-				current = i
-				filled++
-			}
-			cells[i] = Cell{State: st, Date: d, Index: i, Opacity: 1, Filled: st != CellFuture}
-		}
-		rows = int(math.Ceil(float64(total) / float64(cols)))
-		remaining := total - filled
-		pct := float64(filled) / float64(total) * 100
-		title := cfg.CustomTitle
-		if title == "" {
-			if cfg.GoalTitle != "" {
-				title = cfg.GoalTitle
-			} else {
-				title = fmt.Sprintf("%d DAYS", total)
-			}
-		}
-		g := &Grid{
-			Columns: cols, Rows: rows, Cells: cells, Current: current,
-			Filled: filled, Total: total, Title: title, Unit: unit,
-			StatsLeft: fmt.Sprintf("%dd left", remaining), StatsRight: fmt.Sprintf("%.0f%%", pct), StatsPct: pct,
-		}
-		if cfg.Grouping == model.GroupingWeeks || cfg.Grouping == model.GroupingWeek {
-			g.Grouping = &GroupingSpec{Columns: &GroupGap{Every: 7, Gap: 1.2}}
-		}
-		applySpecialAndHeat(cfg, cells)
-		return g, nil
+	if dayCount < 1 {
+		dayCount = 1
 	}
 
-	// week unit
+	// Short goals: one dot per day in a 7-wide week calendar.
+	if dayCount < 35 {
+		return buildCustomDays(cfg, start, end, now, dayCount, 7)
+	}
+
 	ws := weekStartDay(cfg)
-	wStart := startOfWeek(start, ws)
-	total = weeksBetween(wStart, end) + 1
-	rows := int(math.Ceil(float64(total) / float64(cols)))
-	cells = make([]Cell, cols*rows)
+	weeks := weeksBetween(startOfWeek(start, ws), end) + 1
+	if weeks < 1 {
+		weeks = 1
+	}
+	// Medium goals: week dots, columns sized for a balanced portrait grid.
+	if weeks <= 156 { // ~3 years
+		return buildCustomWeeks(cfg, start, end, now, weekColumns(weeks))
+	}
+
+	months := monthsBetween(start, end) + 1
+	if months < 1 {
+		months = 1
+	}
+	return buildCustomMonths(cfg, start, end, now, monthColumns(months))
+}
+
+func buildCustomDays(cfg model.Config, start, end, now time.Time, total, cols int) (*Grid, error) {
+	ws := weekStartDay(cfg)
+	offset := 0
+	if cols == 7 {
+		offset = (int(start.Weekday()) - int(ws) + 7) % 7
+	}
+	slots := total + offset
+	rows := int(math.Ceil(float64(slots) / float64(cols)))
+	cells := make([]Cell, cols*rows)
 	for i := range cells {
 		cells[i].State = CellEmpty
 		cells[i].Opacity = 1
 	}
+	current := -1
+	filled := 0
+	for i := 0; i < total; i++ {
+		d := start.AddDate(0, 0, i)
+		st := CellFuture
+		if d.Before(now) {
+			st = CellPast
+			filled++
+		} else if d.Equal(now) {
+			st = CellCurrent
+			current = offset + i
+			filled++
+		}
+		cells[offset+i] = Cell{State: st, Date: d, Index: i, Opacity: 1, Filled: st != CellFuture}
+	}
+	remaining := total - filled
+	pct := float64(filled) / float64(total) * 100
+	g := &Grid{
+		Columns: cols, Rows: rows, Cells: cells, Current: current,
+		Filled: filled, Total: total, Title: customGoalTitle(cfg, fmt.Sprintf("%d days", total)), Unit: "day",
+		StatsLeft: fmt.Sprintf("%dd left", remaining), StatsRight: fmt.Sprintf("%.0f%%", pct), StatsPct: pct,
+	}
+	if cfg.ShowAxes && cols == 7 {
+		top := []string{"M", "T", "W", "T", "F", "S", "S"}
+		if cfg.WeekStart == model.WeekStartSunday {
+			top = []string{"S", "M", "T", "W", "T", "F", "S"}
+		}
+		g.Axes = &AxisLabels{Top: top, TopPos: []int{0, 1, 2, 3, 4, 5, 6}}
+	}
+	applySpecialAndHeat(cfg, cells)
+	return g, nil
+}
+
+func buildCustomWeeks(cfg model.Config, start, end, now time.Time, cols int) (*Grid, error) {
+	ws := weekStartDay(cfg)
+	wStart := startOfWeek(start, ws)
+	total := weeksBetween(wStart, end) + 1
+	if total < 1 {
+		total = 1
+	}
+	rows := int(math.Ceil(float64(total) / float64(cols)))
+	cells := make([]Cell, cols*rows)
+	for i := range cells {
+		cells[i].State = CellEmpty
+		cells[i].Opacity = 1
+	}
+	current := -1
+	filled := 0
 	lived := weeksBetween(wStart, now)
 	for i := 0; i < total; i++ {
 		d := wStart.AddDate(0, 0, i*7)
@@ -748,21 +828,64 @@ func buildCustom(cfg model.Config, now time.Time) (*Grid, error) {
 	}
 	remaining := total - filled
 	pct := float64(filled) / float64(total) * 100
-	title := cfg.CustomTitle
-	if title == "" {
-		if cfg.GoalTitle != "" {
-			title = cfg.GoalTitle
-		} else {
-			title = "YOUR GOAL"
-		}
-	}
 	g := &Grid{
 		Columns: cols, Rows: rows, Cells: cells, Current: current,
-		Filled: filled, Total: total, Title: title, Unit: unit,
-		StatsLeft: fmt.Sprintf("%d done", filled), StatsRight: fmt.Sprintf("%d to go", remaining), StatsPct: pct,
+		Filled: filled, Total: total, Title: customGoalTitle(cfg, "Your goal"), Unit: "week",
+		StatsLeft: fmt.Sprintf("%dw left", remaining), StatsRight: fmt.Sprintf("%.0f%%", pct), StatsPct: pct,
 	}
 	if cfg.Grouping == model.GroupingMonths || cfg.Grouping == model.GroupingMonth {
 		g.Grouping = &GroupingSpec{Columns: &GroupGap{Every: 4, Gap: 1.5}}
+	}
+	applySpecialAndHeat(cfg, cells)
+	return g, nil
+}
+
+func monthsBetween(a, b time.Time) int {
+	a = time.Date(a.Year(), a.Month(), 1, 0, 0, 0, 0, a.Location())
+	b = time.Date(b.Year(), b.Month(), 1, 0, 0, 0, 0, b.Location())
+	return (b.Year()-a.Year())*12 + int(b.Month()-a.Month())
+}
+
+func buildCustomMonths(cfg model.Config, start, end, now time.Time, cols int) (*Grid, error) {
+	mStart := time.Date(start.Year(), start.Month(), 1, 0, 0, 0, 0, start.Location())
+	total := monthsBetween(start, end) + 1
+	if total < 1 {
+		total = 1
+	}
+	rows := int(math.Ceil(float64(total) / float64(cols)))
+	cells := make([]Cell, cols*rows)
+	for i := range cells {
+		cells[i].State = CellEmpty
+		cells[i].Opacity = 1
+	}
+	nowMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	current := -1
+	filled := 0
+	for i := 0; i < total; i++ {
+		d := mStart.AddDate(0, i, 0)
+		st := CellFuture
+		if d.Before(nowMonth) {
+			st = CellPast
+			filled++
+		} else if d.Equal(nowMonth) {
+			st = CellCurrent
+			current = i
+			filled++
+		}
+		cells[i] = Cell{State: st, Date: d, Index: i, Opacity: 1, Filled: st != CellFuture}
+	}
+	remaining := total - filled
+	pct := float64(filled) / float64(total) * 100
+	g := &Grid{
+		Columns: cols, Rows: rows, Cells: cells, Current: current,
+		Filled: filled, Total: total, Title: customGoalTitle(cfg, "Your goal"), Unit: "month",
+		StatsLeft: fmt.Sprintf("%dm left", remaining), StatsRight: fmt.Sprintf("%.0f%%", pct), StatsPct: pct,
+	}
+	if cfg.ShowAxes {
+		g.Axes = &AxisLabels{
+			Top:    []string{"J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"},
+			TopPos: []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+		}
 	}
 	applySpecialAndHeat(cfg, cells)
 	return g, nil

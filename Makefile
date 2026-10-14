@@ -1,12 +1,27 @@
-.PHONY: build run dev test generate install
+.PHONY: build build-mac build-linux run dev test generate install
 
 ADDR ?= :8080
+ARCH_MAC ?= arm64
+ARCH_LINUX ?= amd64
+DIST ?= dist
 
+# Native binary for the machine you're on.
 build:
-	go build -o life-dots ./cmd/life-dots
+	mkdir -p $(DIST)
+	go build -o $(DIST)/life-dots ./cmd/life-dots
+
+# Cross-compile macOS (default arm64). Override: make build-mac ARCH_MAC=amd64
+build-mac:
+	mkdir -p $(DIST)
+	GOOS=darwin GOARCH=$(ARCH_MAC) go build -o $(DIST)/life-dots-mac ./cmd/life-dots
+
+# Cross-compile Linux (default amd64). Override: make build-linux ARCH_LINUX=arm64
+build-linux:
+	mkdir -p $(DIST)
+	GOOS=linux GOARCH=$(ARCH_LINUX) go build -o $(DIST)/life-dots-linux ./cmd/life-dots
 
 run: build
-	./life-dots serve --addr $(ADDR)
+	./$(DIST)/life-dots serve --addr $(ADDR)
 
 # Local studio — no config dir; everything lives in the URL.
 dev:
@@ -16,7 +31,7 @@ test:
 	go test ./e2e/ ./internal/... -count=1 -timeout 120s
 
 generate: build
-	./life-dots generate --mode life --output wallpaper.png
+	./$(DIST)/life-dots generate --mode life --output wallpaper.png
 
 install: build
-	./life-dots service install --addr $(ADDR)
+	./$(DIST)/life-dots service install --addr $(ADDR)
