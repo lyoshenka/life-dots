@@ -102,14 +102,6 @@ const (
 	ScreenHome ScreenType = "home"
 )
 
-// FooterMode controls bottom text.
-type FooterMode string
-
-const (
-	FooterNone    FooterMode = "none"
-	FooterNumbers FooterMode = "numbers"
-)
-
 // WidgetLayout shifts content for lock-screen widgets.
 type WidgetLayout string
 
@@ -216,10 +208,10 @@ type Config struct {
 	ShowTitle    bool       `json:"showTitle"` // calendar title (year, custom title, etc.)
 	ShowBranding bool       `json:"showBranding"`
 	ShowProgress bool       `json:"showProgress"`
-	MuteText     bool       `json:"muteText"` // muted color for footer + axis labels
-	FooterMode   FooterMode `json:"footerMode"`
-	TitleSize    float64    `json:"titleSize"`  // title font size in px
-	FooterSize   float64    `json:"footerSize"` // footer font size in px
+	MuteText     bool    `json:"muteText"`   // muted color for footer + axis labels
+	ShowFooter   bool    `json:"showFooter"` // stats text under the dots
+	TitleSize    float64 `json:"titleSize"`  // title font size in px
+	FooterSize   float64 `json:"footerSize"` // footer font size in px
 
 	// Layout / device
 	DeviceID       string       `json:"deviceId"`
@@ -295,7 +287,7 @@ func DefaultConfig() Config {
 		ShowBranding:   false,
 		ShowProgress:   true,
 		MuteText:       false,
-		FooterMode:     FooterNumbers,
+		ShowFooter:     true,
 		TitleSize:      84,
 		FooterSize:     48,
 		DeviceID:     "iphone-16-pro",

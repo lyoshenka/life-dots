@@ -217,7 +217,7 @@ func TestE2E_RenderPNGAllModes(t *testing.T) {
 			cfg.ShowCard = true
 			cfg.ShowAxes = true
 			cfg.ShowProgress = true
-			cfg.FooterMode = model.FooterNumbers
+			cfg.ShowFooter = true
 			cfg.HighlightToday = true
 			data, err := render.RenderPNG(cfg, nil, now)
 			if err != nil {
@@ -683,7 +683,7 @@ func TestE2E_CLIGenerate(t *testing.T) {
 		"--highlight-color", "#FF6B4A",
 		"--grid-opacity", "90",
 		"--show-title",
-		"--footer-mode", "numbers",
+		"--show-footer",
 		"--width", "160",
 		"--height", "320",
 		"--output", outPNG,

@@ -165,7 +165,7 @@ func TestRenderNumbersAndFooter(t *testing.T) {
 	cfg.Mode = model.ModeLife
 	cfg.ShowNumbers = true
 	cfg.ShowBoth = true
-	cfg.FooterMode = model.FooterNumbers
+	cfg.ShowFooter = true
 	data, err := render.RenderPNG(cfg, nil, time.Date(2026, 10, 14, 0, 0, 0, 0, time.Local))
 	if err != nil {
 		t.Fatal(err)

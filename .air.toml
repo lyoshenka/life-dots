@@ -1,0 +1,23 @@
+# Live reload for `make dev` — https://github.com/air-verse/air
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o ./tmp/life-dots ./cmd/life-dots"
+entrypoint = ["./tmp/life-dots", "serve"]
+include_ext = ["go", "html", "css", "js"]
+exclude_dir = ["tmp", "dist", "vendor", "e2e", ".git", ".data"]
+exclude_regex = ["_test\\.go"]
+delay = 300
+stop_on_error = true
+send_interrupt = true
+kill_delay = "500ms"
+
+[log]
+time = false
+
+[misc]
+clean_on_exit = true
+
+[screen]
+clear_on_rebuild = false

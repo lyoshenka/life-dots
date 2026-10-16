@@ -61,7 +61,10 @@
 
     <section class="stack">
       <div class="panel">
-        <h2>Calendar</h2>
+        <div class="panel-heading">
+          <h2>Calendar</h2>
+          <a href="#" id="btnImport" class="panel-link">Import from URL</a>
+        </div>
         <div class="seg">
           <button type="button" data-seg="mode" data-value="life">Life</button>
           <button type="button" data-seg="mode" data-value="year" class="active">Year</button>
@@ -152,37 +155,41 @@
           <button type="button" data-seg="shape" data-value="square">Square</button>
           <button type="button" data-seg="shape" data-value="square-nogap">Square (no gap)</button>
         </div>
-        <div class="field">
-          <label for="marginTop">Top margin</label>
-          <div class="input-group">
-            <input id="marginTop" type="number" min="0" max="800" value="48"/>
-            <span class="input-group-text">px</span>
+        <div class="field-row">
+          <div class="field">
+            <label for="marginTop">Top margin</label>
+            <div class="input-group">
+              <input id="marginTop" type="number" min="0" max="800" value="48"/>
+              <span class="input-group-text">px</span>
+            </div>
+            <p class="field-help">Inset from the top of the wallpaper. Pushes the grid downward.</p>
           </div>
-          <p class="field-help">Inset from the top of the wallpaper. Pushes the grid downward.</p>
+          <div class="field">
+            <label for="margin">Side margin</label>
+            <div class="input-group">
+              <input id="margin" type="number" min="0" max="400" value="48"/>
+              <span class="input-group-text">px</span>
+            </div>
+            <p class="field-help">Left and right inset. Also used as the bottom inset.</p>
+          </div>
         </div>
-        <div class="field">
-          <label for="margin">Side margin</label>
-          <div class="input-group">
-            <input id="margin" type="number" min="0" max="400" value="48"/>
-            <span class="input-group-text">px</span>
+        <div class="field-row">
+          <div class="field">
+            <label for="dotSize">Dot size</label>
+            <div class="input-group">
+              <input id="dotSize" type="number" min="1" max="200" value="26"/>
+              <span class="input-group-text">px</span>
+            </div>
+            <p class="field-help">Mark diameter in device pixels. Independent of spacing. On dense grids (Life), values that don’t fit are capped.</p>
           </div>
-          <p class="field-help">Left and right inset. Also used as the bottom inset.</p>
-        </div>
-        <div class="field">
-          <label for="dotGap">Dot spacing</label>
-          <div class="input-group">
-            <input id="dotGap" type="number" min="0" max="200" value="12"/>
-            <span class="input-group-text">px</span>
+          <div class="field">
+            <label for="dotGap">Dot spacing</label>
+            <div class="input-group">
+              <input id="dotGap" type="number" min="0" max="200" value="12"/>
+              <span class="input-group-text">px</span>
+            </div>
+            <p class="field-help">Gap between dots in pixels. Ignored for Square (no gap).</p>
           </div>
-          <p class="field-help">Gap between dots in pixels. Ignored for Square (no gap).</p>
-        </div>
-        <div class="field">
-          <label for="dotSize">Dot size</label>
-          <div class="input-group">
-            <input id="dotSize" type="number" min="1" max="200" value="26"/>
-            <span class="input-group-text">px</span>
-          </div>
-          <p class="field-help">Mark diameter in device pixels. Independent of spacing. On dense grids (Life), values that don’t fit are capped.</p>
         </div>
         <div class="field">
           <label for="gridOpacity">Grid opacity</label>
@@ -304,6 +311,23 @@
       <div class="modal-actions">
         <button type="button" data-close-reset>Cancel</button>
         <button type="button" class="primary" id="btnResetConfirm">Reset to Defaults</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="importModal" hidden>
+    <div class="modal-backdrop" data-close-import></div>
+    <div class="modal-dialog modal-wide" role="dialog" aria-modal="true" aria-labelledby="importModalTitle">
+      <h2 id="importModalTitle">Import from URL</h2>
+      <p>Paste a wallpaper URL. This clears all studio settings in local storage, then applies the config from the URL.</p>
+      <div class="field">
+        <label for="importUrl">Wallpaper URL</label>
+        <textarea id="importUrl" rows="5" placeholder="https://…/wallpaper.png?mode=year&amp;…" spellcheck="false"></textarea>
+      </div>
+      <p id="importError" hidden></p>
+      <div class="modal-actions">
+        <button type="button" data-close-import>Cancel</button>
+        <button type="button" class="primary" id="btnImportConfirm">Import</button>
       </div>
     </div>
   </div>

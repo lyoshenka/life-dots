@@ -41,7 +41,7 @@
     showBranding: false,
     showProgress: true,
     muteText: false,
-    footerMode: "numbers",
+    showFooter: true,
     titleSize: 84,
     footerSize: 48,
     deviceId: "iphone-16-pro",
@@ -99,7 +99,7 @@
       mode: cfg.mode,
       birthday: cfg.birthday,
       lifespan: cfg.lifespan,
-      year: new Date().getFullYear(),
+      year: cfg.year || new Date().getFullYear(),
       startDate: cfg.startDate,
       endDate: cfg.endDate,
       customTitle: cfg.customTitle,
@@ -139,7 +139,7 @@
       showBranding: cfg.showBranding,
       showProgress: cfg.showProgress,
       muteText: !!cfg.muteText,
-      footerMode: cfg.footerMode,
+      showFooter: cfg.showFooter,
       titleSize: cfg.titleSize,
       footerSize: cfg.footerSize,
       deviceId: cfg.deviceId,
@@ -193,7 +193,7 @@
       showBranding: "showBranding",
       showProgress: "showProgress",
       muteText: "muteText",
-      footerMode: "footerMode",
+      showFooter: "showFooter",
       titleSize: "titleSize",
       footerSize: "footerSize",
       deviceId: "deviceId",
@@ -211,6 +211,9 @@
         state[to] = from === "habits" ? structuredClone(cfg[from]) : cfg[from];
       }
     }
+    if (cfg.showFooter === undefined && cfg.footerMode != null && cfg.footerMode !== "") {
+      state.showFooter = cfg.footerMode !== "none";
+    }
     if (cfg.noGap && (cfg.dotShape === "square" || !cfg.dotShape)) {
       state.dotShape = "square-nogap";
     }
@@ -222,7 +225,6 @@
 
   function normalizeLoadedState() {
     if (state.mode === "revenue" || state.mode === "next-months" || state.mode === "year-end") state.mode = "year";
-    if (state.footerMode === "quote" || state.footerMode === "both") state.footerMode = "numbers";
     if (state.dotShape === "custom" || state.dotShape === "pill") state.dotShape = "circle";
     if (state.bgType === "preset") state.bgType = "match";
     if (state.cardStyle === "glass") state.cardStyle = "flat";
@@ -268,7 +270,7 @@
     set("marginTop", state.marginTop);
     set("dotGap", state.dotGap);
     set("dotSize", state.dotSize);
-    set("showFooter", state.footerMode !== "none");
+    set("showFooter", state.showFooter);
     set("showCard", state.showCard);
     set("weekStartsMonday", state.weekStart !== "sunday");
     set("showAxes", state.showAxes);
@@ -357,8 +359,8 @@
     if (cfg.showTitle) {
       set("title_size", cfg.titleSize);
     }
-    set("footer_mode", cfg.footerMode);
-    if (cfg.footerMode !== "none") {
+    p.set("show_footer", boolParam(cfg.showFooter));
+    if (cfg.showFooter) {
       set("footer_size", cfg.footerSize);
     }
     p.set("mute_text", boolParam(cfg.muteText));
@@ -458,7 +460,7 @@
     const titleFields = document.getElementById("titleFields");
     if (titleFields) titleFields.hidden = !state.showTitle;
     const footerSizeField = document.getElementById("footerSizeField");
-    if (footerSizeField) footerSizeField.hidden = state.footerMode === "none";
+    if (footerSizeField) footerSizeField.hidden = !state.showFooter;
   }
 
   const lockDate = document.getElementById("lockDate");
@@ -570,7 +572,7 @@
     refreshPreview();
   });
   $("#showFooter")?.addEventListener("change", (e) => {
-    state.footerMode = e.target.checked ? "numbers" : "none";
+    state.showFooter = e.target.checked;
     refreshPreview();
   });
   $("#muteText")?.addEventListener("change", (e) => {
@@ -628,6 +630,166 @@
     showToast("Reset to defaults");
   }
 
+  function parseBoolParam(v) {
+    return v === "1" || v === "true";
+  }
+
+  function configFromQuery(params) {
+    const get = (k) => {
+      const v = params.get(k);
+      return v == null ? "" : v;
+    };
+    const num = (k) => {
+      const v = get(k);
+      if (v === "") return undefined;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    };
+    const bool = (k) => {
+      const v = get(k);
+      if (v === "") return undefined;
+      return parseBoolParam(v);
+    };
+    const str = (k) => {
+      const v = get(k);
+      return v === "" ? undefined : v;
+    };
+
+    const cfg = {};
+    const set = (key, val) => {
+      if (val !== undefined) cfg[key] = val;
+    };
+
+    set("mode", str("mode"));
+    set("birthday", str("birthday") || str("dob"));
+    set("lifespan", num("lifespan"));
+    set("year", num("year"));
+    set("startDate", str("start_date"));
+    set("endDate", str("end_date") || str("goal_date"));
+    set("customTitle", str("title"));
+    set("fg", str("fg"));
+    set("fgOther", str("fg_other"));
+    set("bg", str("bg"));
+    set("highlightColor", str("highlight_color"));
+    set("grouping", str("grouping"));
+    set("weekStart", str("week_start"));
+    set("dotShape", str("shape"));
+    set("shapeStyle", str("shape_style"));
+    set("noGap", bool("no_gap"));
+    set("dotGap", num("dot_gap"));
+    set("dotSize", num("dot_size"));
+    set("fillFocus", str("fill_focus"));
+    set("highlightToday", bool("highlight_today"));
+    set("showNumbers", bool("show_numbers"));
+    set("showBoth", bool("show_both"));
+    set("bgType", str("bg_type"));
+    set("bgUrl", str("bg_url"));
+    set("bgRotate", num("bg_rotate"));
+    set("bgBlur", num("bg_blur"));
+    set("bgDim", num("bg_dim"));
+    set("bgFocalX", num("bg_focal_x"));
+    set("bgFocalY", num("bg_focal_y"));
+    set("gridOpacity", num("grid_opacity"));
+    set("showCard", bool("show_card"));
+    set("cardStyle", str("card_style"));
+    set("cardOpacity", num("card_opacity"));
+    set("cardRadius", num("card_radius"));
+    set("cardFade", num("card_fade"));
+    set("cardPadH", num("card_pad_h"));
+    set("cardPadV", num("card_pad_v"));
+    set("showAxes", bool("show_axes"));
+    set("showTitle", bool("show_title"));
+    set("showLabels", bool("show_labels"));
+    set("showBranding", bool("show_branding"));
+    set("showProgress", bool("show_progress"));
+    set("muteText", bool("mute_text"));
+    if (params.has("show_footer")) {
+      set("showFooter", bool("show_footer"));
+    } else if (params.has("footer_mode")) {
+      // Legacy wallpaper URLs used footer_mode=none|numbers.
+      set("showFooter", get("footer_mode") !== "none");
+    }
+    set("titleSize", num("title_size"));
+    set("footerSize", num("footer_size"));
+    set("deviceId", str("device"));
+    set("width", num("width"));
+    set("height", num("height"));
+    set("widgetLayout", str("widget_layout"));
+    set("margin", num("margin"));
+    set("marginTop", num("margin_top"));
+    set("statsScale", num("stats_scale"));
+
+    const habitsRaw = get("habits");
+    if (habitsRaw) {
+      try {
+        cfg.habits = JSON.parse(habitsRaw);
+      } catch {
+        /* ignore bad habits JSON */
+      }
+    }
+
+    if (cfg.showAxes !== undefined && cfg.showLabels === undefined) {
+      cfg.showLabels = cfg.showAxes;
+    }
+    return cfg;
+  }
+
+  function parseImportURL(raw) {
+    const text = String(raw || "").trim();
+    if (!text) throw new Error("Paste a wallpaper URL first.");
+    let url;
+    try {
+      url = new URL(text, location.origin);
+    } catch {
+      throw new Error("That doesn’t look like a valid URL.");
+    }
+    const params = url.searchParams;
+    if (![...params.keys()].length) {
+      throw new Error("URL has no config query parameters.");
+    }
+    return configFromQuery(params);
+  }
+
+  function applyImportFromURL(raw) {
+    const cfg = parseImportURL(raw);
+    try {
+      localStorage.clear();
+    } catch {
+      /* ignore */
+    }
+    const next = structuredClone(defaults);
+    next.habits = (next.habits || []).map((h) => ({
+      ...h,
+      completions: {},
+    }));
+    Object.assign(state, next);
+    applyLoaded(cfg);
+    normalizeLoadedState();
+    syncForm();
+    refreshPreview();
+    showToast("Imported from URL");
+  }
+
+  const importModal = document.getElementById("importModal");
+  const importUrlInput = document.getElementById("importUrl");
+  const importError = document.getElementById("importError");
+
+  function openImportModal() {
+    if (!importModal) return;
+    if (importError) {
+      importError.hidden = true;
+      importError.textContent = "";
+    }
+    if (importUrlInput) importUrlInput.value = "";
+    importModal.hidden = false;
+    importUrlInput?.focus();
+  }
+
+  function closeImportModal() {
+    if (!importModal) return;
+    importModal.hidden = true;
+  }
+
   $("#btnReset")?.addEventListener("click", openResetModal);
   $("#btnResetConfirm")?.addEventListener("click", () => {
     closeResetModal();
@@ -636,10 +798,30 @@
   resetModal?.querySelectorAll("[data-close-reset]").forEach((el) => {
     el.addEventListener("click", closeResetModal);
   });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && resetModal && !resetModal.hidden) {
-      closeResetModal();
+
+  $("#btnImport")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    openImportModal();
+  });
+  $("#btnImportConfirm")?.addEventListener("click", () => {
+    try {
+      applyImportFromURL(importUrlInput?.value);
+      closeImportModal();
+    } catch (err) {
+      if (importError) {
+        importError.hidden = false;
+        importError.textContent = err.message || "Import failed.";
+      }
     }
+  });
+  importModal?.querySelectorAll("[data-close-import]").forEach((el) => {
+    el.addEventListener("click", closeImportModal);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (resetModal && !resetModal.hidden) closeResetModal();
+    if (importModal && !importModal.hidden) closeImportModal();
   });
 
   const screen = $(".phone-screen");

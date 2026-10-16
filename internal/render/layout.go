@@ -129,7 +129,7 @@ func ComputeLayout(cfg model.Config, grid *calendar.Grid) LayoutMetrics {
 	axisSize := math.Max(8*px, contentW*0.022)
 
 	hasTitle := grid.Title != ""
-	hasFooter := cfg.FooterMode != model.FooterNone
+	hasFooter := cfg.ShowFooter
 
 	chromeTop := titleSize * 0.4
 	if hasTitle {

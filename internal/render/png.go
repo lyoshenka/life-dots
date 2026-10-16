@@ -151,7 +151,7 @@ func RenderPNG(cfg model.Config, photo image.Image, now time.Time) ([]byte, erro
 }
 
 func buildFooter(cfg model.Config, grid *calendar.Grid, now time.Time) string {
-	if cfg.FooterMode == model.FooterNone {
+	if !cfg.ShowFooter {
 		return ""
 	}
 	if grid.StatsLeft == "" {

@@ -240,6 +240,26 @@ input[type="range"] {
   margin: 0 0 0.9rem;
   font-weight: 600;
 }
+.panel-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 0.9rem;
+}
+.panel-heading h2 {
+  margin: 0;
+}
+.panel-link {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  white-space: nowrap;
+}
+.panel-link:hover {
+  color: var(--text);
+}
 .panel h2.sub {
   margin-top: 1.15rem;
 }
@@ -278,7 +298,7 @@ input[type="range"] {
 
 .btn-reset {
   width: 100%;
-  margin-top: 0.25rem;
+  margin-top: 0.85rem;
   border-radius: var(--radius-sm);
 }
 
@@ -537,6 +557,22 @@ input[type="range"] {
   border-radius: var(--radius);
   padding: 1.25rem 1.35rem 1.15rem;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+}
+.modal-dialog.modal-wide {
+  width: min(100%, 32rem);
+}
+.modal-dialog textarea {
+  width: 100%;
+  min-height: 6.5rem;
+  resize: vertical;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  word-break: break-all;
+}
+#importError {
+  color: #ff6b4a;
+  margin: -0.5rem 0 0.85rem;
 }
 .modal-dialog h2 {
   margin: 0 0 0.55rem;

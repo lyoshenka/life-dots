@@ -14,7 +14,7 @@ func TestCardIncludesTitleAndFooter(t *testing.T) {
 	cfg.Width, cfg.Height = 1206, 2622
 	cfg.ShowCard = true
 	cfg.ShowTitle = true
-	cfg.FooterMode = model.FooterNumbers
+	cfg.ShowFooter = true
 	cfg.CardPadH, cfg.CardPadV = 20, 20
 	g, err := calendar.Build(cfg, now)
 	if err != nil {

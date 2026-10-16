@@ -136,8 +136,11 @@ func ApplyQuery(cfg *Config, q map[string][]string) {
 	setBool("show_branding", &cfg.ShowBranding)
 	setBool("show_progress", &cfg.ShowProgress)
 	setBool("mute_text", &cfg.MuteText)
-	if v := get("footer_mode"); v != "" {
-		cfg.FooterMode = FooterMode(v)
+	if get("show_footer") != "" {
+		setBool("show_footer", &cfg.ShowFooter)
+	} else if v := get("footer_mode"); v != "" {
+		// Legacy wallpaper URLs used footer_mode=none|numbers.
+		cfg.ShowFooter = v != "none"
 	}
 	setFloat("title_size", &cfg.TitleSize)
 	setFloat("footer_size", &cfg.FooterSize)

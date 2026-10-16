@@ -176,7 +176,7 @@ override defaults. Shared with /wallpaper.png via the same ApplyQuery logic.
     --show-branding
     --show-progress
     --mute-text
-    --footer-mode none|numbers
+    --show-footer
 
   Layout:
     --device id             Device preset (sets width/height)
@@ -306,7 +306,7 @@ func runGenerate(args []string) {
 	_ = fs.Bool("show-branding", false, "show branding")
 	_ = fs.Bool("show-progress", false, "show progress in footer")
 	_ = fs.Bool("mute-text", false, "muted color for footer and axis labels")
-	_ = fs.String("footer-mode", "", "none|numbers")
+	_ = fs.Bool("show-footer", false, "show footer stats")
 
 	// Layout
 	_ = fs.String("device", "", "device preset id")

@@ -23,9 +23,9 @@ build-linux:
 run: build
 	./$(DIST)/life-dots serve --addr $(ADDR)
 
-# Local studio — no config dir; everything lives in the URL.
+# Local studio with live reload (Go/HTML/CSS/JS). ADDR still works: make dev ADDR=:9090
 dev:
-	go run ./cmd/life-dots serve --addr $(ADDR)
+	go run github.com/air-verse/air@v1.67.4 -build.args_bin=--addr -build.args_bin=$(ADDR)
 
 test:
 	go test ./e2e/ ./internal/... -count=1 -timeout 120s
