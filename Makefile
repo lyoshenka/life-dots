@@ -1,4 +1,4 @@
-.PHONY: build build-mac build-linux run dev test generate install
+.PHONY: build build-mac build-linux clean run dev test generate install
 
 ADDR ?= :8080
 ARCH_MAC ?= arm64
@@ -19,6 +19,9 @@ build-mac:
 build-linux:
 	mkdir -p $(DIST)
 	GOOS=linux GOARCH=$(ARCH_LINUX) go build -o $(DIST)/life-dots-linux ./cmd/life-dots
+
+clean:
+	rm -rf $(DIST)
 
 run: build
 	./$(DIST)/life-dots serve --addr $(ADDR)
