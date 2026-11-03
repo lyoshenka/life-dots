@@ -1,11 +1,19 @@
 (() => {
+  /** Local calendar day as YYYY-MM-DD (not UTC — avoids timezone skew). */
+  function localDateString(d = new Date()) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
   const state = {
     mode: "year",
     birthday: "1995-01-01",
     lifespan: 90,
     year: new Date().getFullYear(),
-    startDate: new Date().toISOString().slice(0, 10),
-    endDate: new Date(Date.now() + 90 * 864e5).toISOString().slice(0, 10),
+    startDate: localDateString(),
+    endDate: localDateString(new Date(Date.now() + 90 * 864e5)),
     customTitle: "",
     fg: "#ffffff",
     fgOther: "#383838",
@@ -407,6 +415,8 @@
     set("screen", "lock");
     set("margin", cfg.margin);
     set("margin_top", cfg.marginTop);
+    // Client local day so "today" is correct even if the server is in another TZ.
+    set("date", localDateString());
     return p;
   }
 
@@ -842,7 +852,7 @@
   });
 
   $("#btnLogHabit")?.addEventListener("click", async () => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateString();
     const res = await fetch("/api/habits/log?habit=h1&done=1&" + studioQuery(), { method: "POST" });
     if (res.ok) {
       const data = await res.json();

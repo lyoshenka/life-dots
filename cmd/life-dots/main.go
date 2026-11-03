@@ -113,6 +113,9 @@ Opens a local studio UI and serves wallpaper images:
   GET  /api/meta         Devices + habit icons
   GET  /api/qr           QR code for a wallpaper URL
 
+Pass date=YYYY-MM-DD on wallpaper URLs so "today" follows the client's
+calendar day (important when the phone and server disagree on timezone).
+
 Studio settings are stored in the browser only. Wallpaper links encode
 settings as query params for Shortcuts / bookmarks.
 `)
@@ -134,6 +137,7 @@ override defaults. Shared with /wallpaper.png via the same ApplyQuery logic.
     --year N
     --start-date YYYY-MM-DD
     --end-date|--goal-date YYYY-MM-DD
+    --date YYYY-MM-DD      As-of "today" (avoids server timezone skew)
     --title string         Custom title
     --grouping string      Life grouping (none|months|decades|full|…)
     --week-start monday|sunday
@@ -264,6 +268,7 @@ func runGenerate(args []string) {
 	_ = fs.String("start-date", "", "goal/custom start YYYY-MM-DD")
 	_ = fs.String("end-date", "", "goal/custom end YYYY-MM-DD")
 	_ = fs.String("goal-date", "", "alias for --end-date")
+	dateFlag := fs.String("date", "", "as-of today YYYY-MM-DD (default: now)")
 	_ = fs.String("title", "", "custom title")
 	_ = fs.String("grouping", "", "life grouping")
 	_ = fs.String("week-start", "", "monday|sunday")
@@ -334,7 +339,7 @@ func runGenerate(args []string) {
 	q := map[string][]string{}
 	fs.Visit(func(f *flag.Flag) {
 		switch f.Name {
-		case "output", "set-wallpaper", "data-dir":
+		case "output", "set-wallpaper", "data-dir", "date":
 			return
 		}
 		key := strings.ReplaceAll(f.Name, "-", "_")
@@ -342,12 +347,22 @@ func runGenerate(args []string) {
 	})
 	model.ApplyQuery(&cfg, q)
 
-	if (cfg.Mode == model.ModeCustom || cfg.Mode == model.ModeGoal) && cfg.StartDate == "" {
-		cfg.StartDate = time.Now().Format("2006-01-02")
-		cfg.EndDate = time.Now().AddDate(0, 3, 0).Format("2006-01-02")
+	now := time.Now()
+	if *dateFlag != "" {
+		t, err := time.ParseInLocation("2006-01-02", *dateFlag, time.Local)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "date: %v\n", err)
+			os.Exit(1)
+		}
+		now = t
 	}
 
-	png, err := render.RenderPNG(cfg, nil, time.Now())
+	if (cfg.Mode == model.ModeCustom || cfg.Mode == model.ModeGoal) && cfg.StartDate == "" {
+		cfg.StartDate = now.Format("2006-01-02")
+		cfg.EndDate = now.AddDate(0, 3, 0).Format("2006-01-02")
+	}
+
+	png, err := render.RenderPNG(cfg, nil, now)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "render: %v\n", err)
 		os.Exit(1)

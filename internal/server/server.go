@@ -109,9 +109,20 @@ func (s *Server) readPhoto(r *http.Request) (image.Image, error) {
 	return nil, nil
 }
 
+// requestNow returns the as-of time for rendering. Query param date=YYYY-MM-DD
+// overrides the server clock so clients in another timezone still get the right "today".
+func requestNow(r *http.Request) time.Time {
+	if d := r.URL.Query().Get("date"); d != "" {
+		if t, err := time.ParseInLocation("2006-01-02", d, time.Local); err == nil {
+			return t
+		}
+	}
+	return time.Now()
+}
+
 func (s *Server) writePNG(w http.ResponseWriter, r *http.Request, cfg model.Config) {
 	photo, _ := s.readPhoto(r)
-	png, err := render.RenderPNG(cfg, photo, time.Now())
+	png, err := render.RenderPNG(cfg, photo, requestNow(r))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -128,7 +139,7 @@ func (s *Server) handleWallpaperPNG(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleWallpaperSVG(w http.ResponseWriter, r *http.Request) {
 	cfg := s.resolveConfig(r)
-	svg, err := render.RenderSVG(cfg, time.Now())
+	svg, err := render.RenderSVG(cfg, requestNow(r))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -149,14 +160,17 @@ func (s *Server) handleProfileWallpaper(w http.ResponseWriter, r *http.Request) 
 	// /p/*/habit/{habitId}/log.png — mark habit done for this request only, then render
 	if len(parts) >= 4 && parts[1] == "habit" && strings.HasPrefix(parts[3], "log") {
 		habitID := parts[2]
-		date := time.Now().Format("2006-01-02")
+		date := r.URL.Query().Get("date")
+		if date == "" {
+			date = requestNow(r).Format("2006-01-02")
+		}
 		cfg = applyHabit(cfg, habitID, date, true)
 		s.writePNG(w, r, cfg)
 		return
 	}
 
 	if strings.HasSuffix(r.URL.Path, ".svg") {
-		svg, err := render.RenderSVG(cfg, time.Now())
+		svg, err := render.RenderSVG(cfg, requestNow(r))
 		if err != nil {
 			http.Error(w, err.Error(), 400)
 			return
@@ -208,7 +222,7 @@ func (s *Server) handleHabitLog(w http.ResponseWriter, r *http.Request) {
 	habitID := r.URL.Query().Get("habit")
 	date := r.URL.Query().Get("date")
 	if date == "" {
-		date = time.Now().Format("2006-01-02")
+		date = requestNow(r).Format("2006-01-02")
 	}
 	done := r.URL.Query().Get("done") != "0"
 	if r.Method == http.MethodPost {
@@ -259,7 +273,7 @@ func (s *Server) handleDesktopApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	cfg := s.resolveConfig(r)
-	png, err := render.RenderPNG(cfg, nil, time.Now())
+	png, err := render.RenderPNG(cfg, nil, requestNow(r))
 	if err != nil {
 		http.Error(w, err.Error(), 400)
 		return

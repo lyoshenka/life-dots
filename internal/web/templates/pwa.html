@@ -18,11 +18,21 @@
     <a href="/"><button type="button">Studio</button></a>
   </div>
   <script>
+    function localDate() {
+      const d = new Date();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return d.getFullYear() + '-' + m + '-' + day;
+    }
     const img = document.getElementById('wp');
-    document.getElementById('refresh').onclick = () => { img.src = '/wallpaper.png?_=' + Date.now(); };
+    function wallpaperSrc(extra) {
+      return '/wallpaper.png?date=' + localDate() + '&_=' + Date.now() + (extra || '');
+    }
+    img.src = wallpaperSrc();
+    document.getElementById('refresh').onclick = () => { img.src = wallpaperSrc(); };
     document.getElementById('log').onclick = async () => {
-      await fetch('/api/habits/log?habit=h1&done=1', { method: 'POST' });
-      img.src = '/wallpaper.png?mode=habits&_=' + Date.now();
+      await fetch('/api/habits/log?habit=h1&done=1&date=' + localDate(), { method: 'POST' });
+      img.src = wallpaperSrc('&mode=habits');
     };
   </script>
 </body>

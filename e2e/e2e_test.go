@@ -411,6 +411,38 @@ func TestE2E_HTTPStudioAndStatic(t *testing.T) {
 	}
 }
 
+func TestE2E_HTTPDateParam(t *testing.T) {
+	srv := newTestServer(t)
+	ts := httptest.NewServer(srv.Handler())
+	t.Cleanup(ts.Close)
+
+	get := func(date string) string {
+		t.Helper()
+		res, err := http.Get(ts.URL + "/wallpaper.svg?mode=monthly&week_start=monday&width=180&height=360&date=" + date)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		body, _ := io.ReadAll(res.Body)
+		if res.StatusCode != 200 {
+			t.Fatalf("status %d: %s", res.StatusCode, body)
+		}
+		return string(body)
+	}
+
+	jan := get("2026-01-15")
+	feb := get("2026-02-15")
+	if jan == feb {
+		t.Fatal("expected different SVG for different date= values")
+	}
+	if !strings.Contains(jan, "January") {
+		t.Fatalf("expected January title in date=2026-01-15 SVG, got: %s", jan[:min(200, len(jan))])
+	}
+	if !strings.Contains(feb, "February") {
+		t.Fatalf("expected February title in date=2026-02-15 SVG, got: %s", feb[:min(200, len(feb))])
+	}
+}
+
 func TestE2E_HTTPWallpaperEndpoints(t *testing.T) {
 	srv := newTestServer(t)
 	ts := httptest.NewServer(srv.Handler())
@@ -419,6 +451,7 @@ func TestE2E_HTTPWallpaperEndpoints(t *testing.T) {
 	paths := []string{
 		"/wallpaper.png?mode=life&birthday=1995-01-01&width=180&height=360",
 		"/wallpaper.svg?mode=life&width=180&height=360",
+		"/wallpaper.png?mode=year&date=2026-06-15&width=180&height=360",
 		"/life?birthday=1995-01-01&width=180&height=360",
 		"/days?width=180&height=360",
 		"/months?width=180&height=360",
@@ -761,7 +794,7 @@ func TestE2E_CLIHelp(t *testing.T) {
 
 	topics := map[string][]string{
 		"serve":    {"--addr", "wallpaper.png", "Studio"},
-		"generate": {"--fill-focus", "--bg-type", "--bg-rotate", "--set-wallpaper", "--output"},
+		"generate": {"--fill-focus", "--bg-type", "--bg-rotate", "--set-wallpaper", "--output", "--date"},
 		"service":  {"install", "print-launchd", "print-systemd", "launchd"},
 	}
 	for topic, needles := range topics {
