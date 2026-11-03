@@ -113,8 +113,9 @@ Opens a local studio UI and serves wallpaper images:
   GET  /api/meta         Devices + habit icons
   GET  /api/qr           QR code for a wallpaper URL
 
-Pass date=YYYY-MM-DD on wallpaper URLs so "today" follows the client's
-calendar day (important when the phone and server disagree on timezone).
+Without date=, wallpapers use the server's current day. Optional
+date=YYYY-MM-DD overrides "today" (useful when client and server
+timezones disagree).
 
 Studio settings are stored in the browser only. Wallpaper links encode
 settings as query params for Shortcuts / bookmarks.

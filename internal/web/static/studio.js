@@ -415,8 +415,6 @@
     set("screen", "lock");
     set("margin", cfg.margin);
     set("margin_top", cfg.marginTop);
-    // Client local day so "today" is correct even if the server is in another TZ.
-    set("date", localDateString());
     return p;
   }
 
@@ -852,14 +850,13 @@
   });
 
   $("#btnLogHabit")?.addEventListener("click", async () => {
-    const today = localDateString();
     const res = await fetch("/api/habits/log?habit=h1&done=1&" + studioQuery(), { method: "POST" });
     if (res.ok) {
       const data = await res.json();
       if (data.config) applyLoaded(data.config);
       else if (state.habits[0]) {
         if (!state.habits[0].completions) state.habits[0].completions = {};
-        state.habits[0].completions[today] = true;
+        state.habits[0].completions[localDateString()] = true;
       }
       showToast("Habit logged");
       refreshPreview();

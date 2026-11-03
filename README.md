@@ -10,7 +10,7 @@ make dev
 
 Open `http://127.0.0.1:8080` on your Mac, configure your calendar, scan the QR with your iPhone, and set up a daily Shortcuts automation that fetches the wallpaper URL.
 
-**Studio settings** are saved in the browser’s `localStorage` (the address bar stays clean). **Wallpaper URLs** carry settings as normal query params — copy that link for Shortcuts or bookmarks. Pass `date=YYYY-MM-DD` so “today” follows the client’s calendar day when the server is in another timezone.
+**Studio settings** are saved in the browser’s `localStorage` (the address bar stays clean). **Wallpaper URLs** carry settings as normal query params — copy that link for Shortcuts or bookmarks. Without a date, the server uses its current day; optionally pass `date=YYYY-MM-DD` to correct for timezone skew.
 
 ## Features
 
